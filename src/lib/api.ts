@@ -540,6 +540,8 @@ export const slaApi = {
     statusSLA?: string;
     pic?: string;
     siteName?: string;
+    slaMin?: number;
+    slaMax?: number;
   }) => {
     const queryParams: Record<string, string | number> = {
       startDate: params.startDate,
@@ -565,6 +567,12 @@ export const slaApi = {
     }
     if (params.siteName) {
       queryParams.siteName = params.siteName;
+    }
+    if (params.slaMin !== undefined) {
+      queryParams.slaMin = params.slaMin;
+    }
+    if (params.slaMax !== undefined) {
+      queryParams.slaMax = params.slaMax;
     }
 
     // API returns pagination inside data object
