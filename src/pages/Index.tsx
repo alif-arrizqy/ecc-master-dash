@@ -64,17 +64,17 @@ const Index = () => {
   const { 
     data: slaReasonsTalis5, 
     isLoading: isLoadingReasonsTalis5 
-  } = useSLAReasons('talis5');
+  } = useSLAReasons('talis5', { startDate, endDate });
   
   const { 
     data: slaReasonsMix, 
     isLoading: isLoadingReasonsMix 
-  } = useSLAReasons('mix');
+  } = useSLAReasons('mix', { startDate, endDate });
   
   const { 
     data: slaReasonsJSPro, 
     isLoading: isLoadingReasonsJSPro 
-  } = useSLAReasons('jspro');
+  } = useSLAReasons('jspro', { startDate, endDate });
 
   // Fetch weekly SLA chart
   const { 

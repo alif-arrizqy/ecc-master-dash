@@ -244,13 +244,21 @@ export const slaApi = {
    * Get SLA reasons for battery version (Penyebab AVG SLA < 95.5%)
    * GET /api/v1/sla-reason/battery-version/{batteryVersion}
    */
-  getSLAReasons: async (batteryVersion: BatteryVersion) => {
+  getSLAReasonsByBatteryVersion: async (
+    batteryVersion: BatteryVersion,
+    params?: { startDate?: string; endDate?: string }
+  ) => {
     return fetchApi<Array<{
       id: number;
       reason: string;
       createdAt: string;
       updatedAt: string;
-    }>>(`/api/v1/sla-reason/battery-version/${batteryVersion}`);
+    }>>(`/api/v1/sla-reason/battery-version/${batteryVersion}`, {
+      params: {
+        startDate: params?.startDate,
+        endDate: params?.endDate,
+      },
+    });
   },
 
   /**
