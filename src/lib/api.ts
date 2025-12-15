@@ -877,5 +877,136 @@ export const slaApi = {
     });
     return response.data.data;
   },
+
+  /**
+   * Sites Management CRUD
+   */
+  // GET /api/v1/sites/
+  getSites: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    sccType?: string;
+    batteryVersion?: string;
+    province?: string;
+    siteName?: string;
+  }) => {
+    return fetchApiPaginated<Array<{
+      id: number;
+      site_id: string;
+      site_name: string;
+      province: string;
+      ip_snmp?: string;
+      scc_type?: string;
+      battery_version?: string;
+      total_battery?: number;
+      talis_installed?: string;
+      status?: string;
+      webapp_url?: string;
+      [key: string]: unknown;
+    }>>('/api/v1/sites/', { params });
+  },
+
+  // POST /api/v1/sites/
+  createSite: async (data: {
+    site_id: string;
+    site_name: string;
+    province: string;
+    ip_snmp?: string;
+    scc_type?: string;
+    battery_version?: string;
+    total_battery?: number;
+    talis_installed?: string;
+    status?: string;
+    webapp_url?: string;
+    [key: string]: unknown;
+  }) => {
+    const response = await apiClient.post<ApiResponse<unknown>>('/api/v1/sites/', data);
+    return response.data.data;
+  },
+
+  // GET /api/v1/sites/{id}
+  getSiteById: async (id: string | number) => {
+    return fetchApi<{
+      id: number;
+      site_id: string;
+      site_name: string;
+      province: string;
+      ip_snmp?: string;
+      scc_type?: string;
+      battery_version?: string;
+      total_battery?: number;
+      talis_installed?: string;
+      status?: string;
+      webapp_url?: string;
+      [key: string]: unknown;
+    }>(`/api/v1/sites/${id}`);
+  },
+
+  // PUT /api/v1/sites/{id}
+  updateSite: async (id: string | number, data: {
+    site_id?: string;
+    site_name?: string;
+    province?: string;
+    ip_snmp?: string;
+    scc_type?: string;
+    battery_version?: string;
+    total_battery?: number;
+    talis_installed?: string;
+    status?: string;
+    webapp_url?: string;
+    [key: string]: unknown;
+  }) => {
+    const response = await apiClient.put<ApiResponse<unknown>>(`/api/v1/sites/${id}`, data);
+    return response.data.data;
+  },
+
+  // DELETE /api/v1/sites/{id}
+  deleteSite: async (id: string | number) => {
+    const response = await apiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sites/${id}`);
+    return response.data.data;
+  },
+
+  // GET /api/v1/sites/status/{status}
+  getSitesByStatus: async (status: string, params?: {
+    page?: number;
+    limit?: number;
+  }) => {
+    return fetchApiPaginated<Array<unknown>>(`/api/v1/sites/status/${status}`, { params });
+  },
+
+  // GET /api/v1/sites/scc-type/{type}
+  getSitesBySccType: async (type: string, params?: {
+    page?: number;
+    limit?: number;
+  }) => {
+    return fetchApiPaginated<Array<unknown>>(`/api/v1/sites/scc-type/${type}`, { params });
+  },
+
+  // GET /api/v1/sites/battery-version/{version}
+  getSitesByBatteryVersion: async (version: BatteryVersion, params?: {
+    page?: number;
+    limit?: number;
+  }) => {
+    return fetchApiPaginated<Array<unknown>>(`/api/v1/sites/battery-version/${version}`, { params });
+  },
+
+  // GET /api/v1/sites/province/{province}
+  getSitesByProvince: async (province: string, params?: {
+    page?: number;
+    limit?: number;
+  }) => {
+    return fetchApiPaginated<Array<unknown>>(`/api/v1/sites/province/${province}`, { params });
+  },
+
+  // GET /api/v1/sites/statistics
+  getSiteStatistics: async () => {
+    return fetchApi<{
+      total: number;
+      byStatus: Record<string, number>;
+      bySccType: Record<string, number>;
+      byBatteryVersion: Record<string, number>;
+    }>('/api/v1/sites/statistics');
+  },
 };
 

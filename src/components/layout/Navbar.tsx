@@ -1,5 +1,5 @@
 import { NavLink } from '@/components/NavLink';
-import { LayoutDashboard, Menu, X, ChevronDown, BarChart3, Wrench, Activity, Database } from 'lucide-react';
+import { LayoutDashboard, Menu, X, ChevronDown, BarChart3, Wrench, Activity, Database, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +29,12 @@ const Navbar = () => {
         { to: '/monitoring/x', label: 'Menu X' },
         { to: '/monitoring/y', label: 'Menu Y' },
       ]
+    },
+    {
+      label: 'Sites',
+      icon: MapPin,
+      hasChildren: false,
+      to: '/sites'
     },
     {
       label: 'SLA Bakti',
