@@ -46,6 +46,51 @@ const CustomLabel = (props: { x?: number | string; y?: number | string; value?: 
 const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDailySLAChartProps) => {
   const lineColor = variantColors[variant];
   
+  // Calculate dynamic Y axis domain
+  const minSLA = Math.min(...data.map(d => d.sla));
+  const minYAxis = Math.max(0, Math.floor(minSLA - 20)); // Kurangi 20, bulatkan ke bawah, minimum 0
+  const maxYAxis = 100;
+  
+  // Generate ticks dynamically
+  const generateTicks = () => {
+    const ticks: number[] = [];
+    const range = maxYAxis - minYAxis;
+    
+    if (range <= 30) {
+      // Jika range kecil, gunakan interval 5
+      for (let i = minYAxis; i <= maxYAxis; i += 5) {
+        ticks.push(i);
+      }
+    } else if (range <= 50) {
+      // Jika range sedang, gunakan interval 10
+      for (let i = minYAxis; i <= maxYAxis; i += 10) {
+        ticks.push(i);
+      }
+      // Pastikan 95.5 ada jika dalam range
+      if (95.5 >= minYAxis && 95.5 <= maxYAxis && !ticks.includes(95.5)) {
+        ticks.push(95.5);
+      }
+    } else {
+      // Jika range besar, gunakan interval 20
+      for (let i = minYAxis; i <= maxYAxis; i += 20) {
+        ticks.push(i);
+      }
+      // Pastikan 95.5 ada jika dalam range
+      if (95.5 >= minYAxis && 95.5 <= maxYAxis && !ticks.includes(95.5)) {
+        ticks.push(95.5);
+      }
+    }
+    
+    // Pastikan 100 selalu ada
+    if (!ticks.includes(100)) {
+      ticks.push(100);
+    }
+    
+    return ticks.sort((a, b) => a - b);
+  };
+  
+  const yAxisTicks = generateTicks();
+  
   return (
     <div className="bg-card rounded-lg p-3 card-shadow">
       <h3 className="text-sm font-semibold text-foreground mb-2">{title}</h3>
@@ -65,12 +110,12 @@ const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDaily
               interval={0}
             />
             <YAxis 
-              domain={[80, 105]}
+              domain={[minYAxis, maxYAxis]}
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => `${value}%`}
-              ticks={[80, 90, 95.5, 100]}
+              ticks={yAxisTicks}
             />
             <Tooltip 
               contentStyle={{ 
