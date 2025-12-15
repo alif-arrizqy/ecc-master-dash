@@ -49,6 +49,19 @@ const SCC_TYPES = [
   { value: 'scc_srne', label: 'SCC SRNE' },
   { value: 'scc_epever', label: 'SCC EPEVER' },
 ];
+
+// Helper function to format SCC type
+const formatSccType = (sccType?: string) => {
+  if (!sccType) return '-';
+  return sccType.toUpperCase().replace(/_/g, ' ');
+};
+
+// Helper function to format site name
+const formatSiteName = (siteName?: string) => {
+  if (!siteName) return '-';
+  return siteName.toUpperCase().replace(/_/g, ' ');
+};
+
 const BATTERY_VERSIONS: { value: BatteryVersion; label: string }[] = [
   { value: 'talis5', label: 'Talis5 Full' },
   { value: 'mix', label: 'Talis5 Mix' },
@@ -56,17 +69,45 @@ const BATTERY_VERSIONS: { value: BatteryVersion; label: string }[] = [
 ];
 
 interface Site {
-  id: number;
-  site_id: string;
-  site_name: string;
-  province: string;
-  ip_snmp?: string;
-  scc_type?: string;
-  battery_version?: string;
-  total_battery?: number;
-  talis_installed?: string;
-  status?: string;
-  webapp_url?: string;
+  prCode?: string | null;
+  siteId: string;
+  clusterId?: string | null;
+  terminalId?: string;
+  siteName: string;
+  ipSite?: string | null;
+  ipSnmp?: string | null;
+  ipMiniPc?: string | null;
+  webappUrl?: string;
+  ehubVersion?: string;
+  panel2Type?: string;
+  sccType?: string;
+  batteryVersion?: string;
+  totalBattery?: number;
+  statusSites?: string;
+  isActive?: boolean;
+  detail?: {
+    village?: string | null;
+    subdistrict?: string | null;
+    regency?: string | null;
+    province?: string;
+    longitude?: string;
+    latitude?: string;
+    ipGatewayGs?: string | null;
+    ipGatewayLc?: string | null;
+    subnet?: string;
+    batteryList?: unknown[];
+    cabinetList?: unknown[];
+    buildYear?: string;
+    projectPhase?: string;
+    onairDate?: string | null;
+    gsSustainDate?: string | null;
+    topoSustainDate?: string | null;
+    talisInstalled?: string | null;
+    providerGs?: string;
+    beamProvider?: string;
+    cellularOperator?: string;
+    contactPerson?: Array<{ name: string; phone: string | null }>;
+  };
   [key: string]: unknown;
 }
 
@@ -83,16 +124,18 @@ const SitesPage = () => {
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [viewingDetails, setViewingDetails] = useState<Site | null>(null);
   const [formData, setFormData] = useState<Partial<Site>>({
-    site_id: '',
-    site_name: '',
-    province: '',
-    ip_snmp: '',
-    scc_type: '',
-    battery_version: '',
-    total_battery: undefined,
-    talis_installed: '',
-    status: '',
-    webapp_url: '',
+    siteId: '',
+    siteName: '',
+    ipSnmp: '',
+    sccType: '',
+    batteryVersion: '',
+    totalBattery: undefined,
+    statusSites: '',
+    webappUrl: '',
+    detail: {
+      province: '',
+      talisInstalled: '',
+    },
   });
   const queryClient = useQueryClient();
   const ITEMS_PER_PAGE = 20;
@@ -105,9 +148,10 @@ const SitesPage = () => {
     sccType: sccTypeFilter !== 'all' ? sccTypeFilter : undefined,
     batteryVersion: batteryVersionFilter !== 'all' ? batteryVersionFilter : undefined,
     province: provinceFilter !== 'all' ? provinceFilter : undefined,
+    sortOrder: 'asc',
   };
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['sites', queryParams],
     queryFn: () => slaApi.getSites(queryParams),
   });
@@ -158,34 +202,38 @@ const SitesPage = () => {
 
   const resetForm = () => {
     setFormData({
-      site_id: '',
-      site_name: '',
-      province: '',
-      ip_snmp: '',
-      scc_type: '',
-      battery_version: '',
-      total_battery: undefined,
-      talis_installed: '',
-      status: '',
-      webapp_url: '',
+      siteId: '',
+      siteName: '',
+      ipSnmp: '',
+      sccType: '',
+      batteryVersion: '',
+      totalBattery: undefined,
+      statusSites: '',
+      webappUrl: '',
+      detail: {
+        province: '',
+        talisInstalled: '',
+      },
     });
     setEditingId(null);
     setSelectedSite(null);
   };
 
   const handleEdit = (site: Site) => {
-    setEditingId(site.id);
+    setEditingId(site.siteId);
     setFormData({
-      site_id: site.site_id,
-      site_name: site.site_name,
-      province: site.province,
-      ip_snmp: site.ip_snmp || '',
-      scc_type: site.scc_type || '',
-      battery_version: site.battery_version || '',
-      total_battery: site.total_battery,
-      talis_installed: site.talis_installed || '',
-      status: site.status || '',
-      webapp_url: site.webapp_url || '',
+      siteId: site.siteId,
+      siteName: site.siteName,
+      ipSnmp: site.ipSnmp || '',
+      sccType: site.sccType || '',
+      batteryVersion: site.batteryVersion || '',
+      totalBattery: site.totalBattery,
+      statusSites: site.statusSites || '',
+      webappUrl: site.webappUrl || '',
+      detail: {
+        province: site.detail?.province || '',
+        talisInstalled: site.detail?.talisInstalled || '',
+      },
     });
     setIsDialogOpen(true);
   };
@@ -196,7 +244,7 @@ const SitesPage = () => {
   };
 
   const handleSubmit = () => {
-    if (!formData.site_id || !formData.site_name || !formData.province) {
+    if (!formData.siteId || !formData.siteName || !formData.detail?.province) {
       toast.error('Site ID, Site Name, dan Province wajib diisi');
       return;
     }
@@ -210,11 +258,21 @@ const SitesPage = () => {
 
   const handleConfirmDelete = () => {
     if (selectedSite) {
-      deleteMutation.mutate(selectedSite.id);
+      deleteMutation.mutate(selectedSite.siteId);
     }
   };
 
-  const sites = data?.data || [];
+  // Ensure sites is always an array
+  // Handle different possible response structures
+  let sites: Site[] = [];
+  if (data) {
+    if (Array.isArray(data.data)) {
+      sites = data.data as Site[];
+    } else if (Array.isArray(data)) {
+      sites = data as Site[];
+    }
+  }
+  
   const pagination = data?.pagination || { page: 1, limit: ITEMS_PER_PAGE, total: 0, totalPages: 0 };
 
   return (
@@ -257,8 +315,8 @@ const SitesPage = () => {
                     <div>
                       <Label>Site ID *</Label>
                       <Input
-                        value={formData.site_id}
-                        onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}
+                        value={formData.siteId || ''}
+                        onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
                         placeholder="PAP9999"
                         disabled={!!editingId}
                       />
@@ -266,8 +324,8 @@ const SitesPage = () => {
                     <div>
                       <Label>Site Name *</Label>
                       <Input
-                        value={formData.site_name}
-                        onChange={(e) => setFormData({ ...formData, site_name: e.target.value })}
+                        value={formData.siteName?.toUpperCase() || ''}
+                        onChange={(e) => setFormData({ ...formData, siteName: e.target.value })}
                         placeholder="Site Name"
                       />
                     </div>
@@ -276,8 +334,11 @@ const SitesPage = () => {
                     <div>
                       <Label>Province *</Label>
                       <Select
-                        value={formData.province}
-                        onValueChange={(value) => setFormData({ ...formData, province: value })}
+                        value={formData.detail?.province || ''}
+                        onValueChange={(value) => setFormData({ 
+                          ...formData, 
+                          detail: { ...formData.detail, province: value } 
+                        })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih Province" />
@@ -294,8 +355,8 @@ const SitesPage = () => {
                     <div>
                       <Label>Status</Label>
                       <Select
-                        value={formData.status || ''}
-                        onValueChange={(value) => setFormData({ ...formData, status: value || undefined })}
+                        value={formData.statusSites || ''}
+                        onValueChange={(value) => setFormData({ ...formData, statusSites: value || undefined })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih Status" />
@@ -315,16 +376,16 @@ const SitesPage = () => {
                     <div>
                       <Label>IP SNMP</Label>
                       <Input
-                        value={formData.ip_snmp}
-                        onChange={(e) => setFormData({ ...formData, ip_snmp: e.target.value })}
+                        value={formData.ipSnmp || ''}
+                        onChange={(e) => setFormData({ ...formData, ipSnmp: e.target.value })}
                         placeholder="192.168.1.1"
                       />
                     </div>
                     <div>
                       <Label>SCC Type</Label>
                       <Select
-                        value={formData.scc_type || ''}
-                        onValueChange={(value) => setFormData({ ...formData, scc_type: value || undefined })}
+                        value={formData.sccType || ''}
+                        onValueChange={(value) => setFormData({ ...formData, sccType: value || undefined })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih SCC Type" />
@@ -344,8 +405,8 @@ const SitesPage = () => {
                     <div>
                       <Label>Battery Version</Label>
                       <Select
-                        value={formData.battery_version || ''}
-                        onValueChange={(value) => setFormData({ ...formData, battery_version: value || undefined })}
+                        value={formData.batteryVersion || ''}
+                        onValueChange={(value) => setFormData({ ...formData, batteryVersion: value || undefined })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih Battery Version" />
@@ -364,8 +425,8 @@ const SitesPage = () => {
                       <Label>Total Battery</Label>
                       <Input
                         type="number"
-                        value={formData.total_battery || ''}
-                        onChange={(e) => setFormData({ ...formData, total_battery: e.target.value ? parseInt(e.target.value) : undefined })}
+                        value={formData.totalBattery || ''}
+                        onChange={(e) => setFormData({ ...formData, totalBattery: e.target.value ? parseInt(e.target.value) : undefined })}
                         placeholder="0"
                         min={0}
                       />
@@ -376,23 +437,26 @@ const SitesPage = () => {
                       <Label>Talis Installed</Label>
                       <Input
                         type="date"
-                        value={formData.talis_installed 
-                          ? (formData.talis_installed.includes('T') 
-                              ? formData.talis_installed.split('T')[0] 
-                              : formData.talis_installed.length === 10 
-                                ? formData.talis_installed 
-                                : format(new Date(formData.talis_installed), 'yyyy-MM-dd'))
+                        value={formData.detail?.talisInstalled 
+                          ? (formData.detail.talisInstalled.includes('T') 
+                              ? formData.detail.talisInstalled.split('T')[0] 
+                              : formData.detail.talisInstalled.length === 10 
+                                ? formData.detail.talisInstalled 
+                                : format(new Date(formData.detail.talisInstalled), 'yyyy-MM-dd'))
                           : ''}
-                        onChange={(e) => setFormData({ ...formData, talis_installed: e.target.value || undefined })}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          detail: { ...formData.detail, talisInstalled: e.target.value || undefined } 
+                        })}
                       />
                     </div>
                     <div>
                       <Label>Webapp URL</Label>
                       <Input
-                        type="url"
-                        value={formData.webapp_url}
-                        onChange={(e) => setFormData({ ...formData, webapp_url: e.target.value })}
-                        placeholder="https://..."
+                        type="text"
+                        value={formData.webappUrl || ''}
+                        onChange={(e) => setFormData({ ...formData, webappUrl: e.target.value })}
+                        placeholder="site-name.sundaya.local"
                       />
                     </div>
                   </div>
@@ -517,6 +581,13 @@ const SitesPage = () => {
           <CardContent>
             {isLoading ? (
               <Loading />
+            ) : error ? (
+              <div className="text-center py-8 text-destructive">
+                <p className="font-semibold">Error memuat data sites</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {error instanceof Error ? error.message : 'Unknown error'}
+                </p>
+              </div>
             ) : (
               <>
                 <div className="overflow-x-auto">
@@ -545,60 +616,60 @@ const SitesPage = () => {
                         </TableRow>
                       ) : (
                         sites.map((site) => (
-                          <TableRow key={site.id}>
-                            <TableCell className="font-medium">{site.site_id}</TableCell>
-                            <TableCell>{site.site_name}</TableCell>
-                            <TableCell>{site.province}</TableCell>
-                            <TableCell>{site.ip_snmp || '-'}</TableCell>
+                          <TableRow key={site.siteId}>
+                            <TableCell className="font-medium">{site.siteId}</TableCell>
+                            <TableCell>{formatSiteName(site.siteName)}</TableCell>
+                            <TableCell>{site.detail?.province || '-'}</TableCell>
+                            <TableCell>{site.ipSnmp || '-'}</TableCell>
                             <TableCell>
-                              {site.scc_type ? (
-                                <Badge variant="outline">{site.scc_type}</Badge>
+                              {site.sccType ? (
+                                <Badge variant="outline">{formatSccType(site.sccType)}</Badge>
                               ) : (
                                 '-'
                               )}
                             </TableCell>
                             <TableCell>
-                              {site.battery_version ? (
+                              {site.batteryVersion ? (
                                 <Badge variant="outline">
-                                  {BATTERY_VERSIONS.find(bv => bv.value === site.battery_version)?.label || site.battery_version}
+                                  {BATTERY_VERSIONS.find(bv => bv.value === site.batteryVersion)?.label || site.batteryVersion}
                                 </Badge>
                               ) : (
                                 '-'
                               )}
                             </TableCell>
-                            <TableCell>{site.total_battery ?? '-'}</TableCell>
+                            <TableCell>{site.totalBattery ?? '-'}</TableCell>
                             <TableCell>
-                              {site.talis_installed
+                              {site.detail?.talisInstalled
                                 ? (() => {
                                     try {
-                                      const date = site.talis_installed.includes('T') 
-                                        ? new Date(site.talis_installed) 
-                                        : new Date(site.talis_installed + 'T00:00:00');
+                                      const date = site.detail.talisInstalled.includes('T') 
+                                        ? new Date(site.detail.talisInstalled) 
+                                        : new Date(site.detail.talisInstalled + 'T00:00:00');
                                       return format(date, 'dd/MM/yyyy');
                                     } catch {
-                                      return site.talis_installed;
+                                      return site.detail.talisInstalled;
                                     }
                                   })()
                                 : '-'}
                             </TableCell>
                             <TableCell>
-                              {site.status ? (
-                                <Badge variant={site.status === 'terestrial' ? 'default' : 'secondary'}>
-                                  {STATUS_OPTIONS.find(s => s.value === site.status)?.label || site.status}
+                              {site.statusSites ? (
+                                <Badge variant={site.statusSites === 'terestrial' ? 'default' : 'secondary'}>
+                                  {STATUS_OPTIONS.find(s => s.value === site.statusSites)?.label || site.statusSites}
                                 </Badge>
                               ) : (
                                 '-'
                               )}
                             </TableCell>
                             <TableCell>
-                              {site.webapp_url ? (
-                                <a
-                                  href={site.webapp_url}
+                              {site.webappUrl ? (
+                                <a 
+                                  href={`http://${site.webappUrl}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-primary hover:underline text-sm"
                                 >
-                                  {site.webapp_url.length > 30 ? `${site.webapp_url.substring(0, 30)}...` : site.webapp_url}
+                                  {site.webappUrl.length > 30 ? `${site.webappUrl.substring(0, 30)}...` : site.webappUrl}
                                 </a>
                               ) : (
                                 '-'
@@ -697,7 +768,7 @@ const SitesPage = () => {
           <DialogHeader>
             <DialogTitle>Site Details</DialogTitle>
             <DialogDescription>
-              Detail lengkap untuk site {viewingDetails?.site_id}
+              Detail lengkap untuk site {viewingDetails?.siteId}
             </DialogDescription>
           </DialogHeader>
           {viewingDetails && (
@@ -727,7 +798,7 @@ const SitesPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Site</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus site "{selectedSite?.site_name}" ({selectedSite?.site_id})?
+              Apakah Anda yakin ingin menghapus site "{selectedSite?.siteName}" ({selectedSite?.siteId})?
               Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
