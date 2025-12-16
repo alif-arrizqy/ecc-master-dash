@@ -247,3 +247,4 @@ const SiteDetailModal = ({ site, problems, onClose }: SiteDetailModalProps) => {
 };
 
 export default SiteDetailModal;
+
