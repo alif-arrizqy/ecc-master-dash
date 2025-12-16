@@ -78,3 +78,43 @@ export interface SiteQueryParams {
   prCode?: string; // Exact match for prCode (takes priority over search)
 }
 
+export interface SiteStatistics {
+  summary: {
+    talis5: { totalSites: number };
+    mix: { totalSites: number };
+    jspro: { totalSites: number };
+  };
+  maluku: {
+    totalSite: {
+      all: number;
+      active: number;
+      inactive: number;
+    };
+    byProvince: Array<{ province: string; count: number }>;
+    byBatteryVersion: {
+      [key: string]: {
+        summary: { total: number };
+        sites: Array<{ siteId: string; siteName: string }>;
+      };
+    };
+    byStatusSites: Record<string, number>;
+    bySccType: Record<string, number>;
+  };
+  papua: {
+    totalSite: {
+      all: number;
+      active: number;
+      inactive: number;
+    };
+    byProvince: Array<{ province: string; count: number }>;
+    byBatteryVersion: {
+      [key: string]: {
+        summary: { total: number };
+        sites: Array<{ siteId: string; siteName: string }>;
+      };
+    };
+    byStatusSites: Record<string, number>;
+    bySccType: Record<string, number>;
+  };
+}
+

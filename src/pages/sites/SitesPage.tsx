@@ -40,13 +40,15 @@ import {
 } from '@/components/ui/alert-dialog';
 
 // Local imports
-import { Site, SiteFormData } from './types';
+import { Site, SiteFormData, SiteQueryParams } from './types';
 import { ITEMS_PER_PAGE } from './constants';
-import { useSitesQuery, useCreateSite, useUpdateSite, useDeleteSite } from './hooks';
+import { useSitesQuery, useCreateSite, useUpdateSite, useDeleteSite, useSiteStatistics } from './hooks';
 import { SiteFilters } from './components/SiteFilters';
 import { SiteTable } from './components/SiteTable';
 import { Pagination } from './components/Pagination';
 import { SiteForm } from './components/SiteForm';
+import { SiteStatistics } from './components/SiteStatistics';
+import { SiteDetailsDialog } from './components/SiteDetailsDialog';
 
 const SitesPage = () => {
   // State management
@@ -76,21 +78,40 @@ const SitesPage = () => {
     },
   });
 
-  // Query params
-  const queryParams = {
+  // Query params - build query object, filtering out undefined/empty values
+  const queryParams: SiteQueryParams = {
     page: currentPage,
     limit: ITEMS_PER_PAGE,
-    search: searchTerm || undefined,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
-    sccType: sccTypeFilter !== 'all' ? sccTypeFilter : undefined,
-    batteryVersion: batteryVersionFilter !== 'all' ? batteryVersionFilter : undefined,
-    province: provinceFilter !== 'all' ? provinceFilter : undefined,
     sortBy: 'siteName',
-    sortOrder: 'asc' as const,
+    sortOrder: 'asc',
   };
+
+  // Add search if provided
+  if (searchTerm && searchTerm.trim()) {
+    queryParams.search = searchTerm.trim();
+  }
+
+  // Add filters only if not 'all'
+  if (statusFilter !== 'all' && statusFilter) {
+    queryParams.status = statusFilter;
+  }
+
+  if (sccTypeFilter !== 'all' && sccTypeFilter) {
+    queryParams.sccType = sccTypeFilter;
+  }
+
+  if (batteryVersionFilter !== 'all' && batteryVersionFilter) {
+    queryParams.batteryVersion = batteryVersionFilter;
+  }
+
+  // Normalize province to lowercase to match API expectations (papua/maluku)
+  if (provinceFilter !== 'all' && provinceFilter) {
+    queryParams.province = provinceFilter.toLowerCase();
+  }
 
   // Data fetching
   const { data, isLoading, error } = useSitesQuery(queryParams);
+  const { data: statisticsData, isLoading: isLoadingStats, error: statisticsError } = useSiteStatistics();
   const createMutation = useCreateSite();
   const updateMutation = useUpdateSite();
   const deleteMutation = useDeleteSite();
@@ -268,6 +289,15 @@ const SitesPage = () => {
           </div>
         </div>
 
+        {/* Statistics Summary */}
+        <div className="mb-8">
+          <SiteStatistics
+            data={statisticsData}
+            isLoading={isLoadingStats}
+            error={statisticsError}
+          />
+        </div>
+
         {/* Search and Filters */}
         <SiteFilters
           searchTerm={searchTerm}
@@ -343,34 +373,11 @@ const SitesPage = () => {
       </main>
 
       {/* Details Dialog */}
-      <Dialog open={!!viewingDetails} onOpenChange={(open) => !open && setViewingDetails(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Site Details</DialogTitle>
-            <DialogDescription>
-              Detail lengkap untuk site {viewingDetails?.siteId}
-            </DialogDescription>
-          </DialogHeader>
-          {viewingDetails && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(viewingDetails).map(([key, value]) => (
-                  <div key={key}>
-                    <Label className="text-xs text-muted-foreground">{key}</Label>
-                    <p className="text-sm font-medium mt-1">
-                      {value === null || value === undefined
-                        ? '-'
-                        : typeof value === 'object'
-                          ? JSON.stringify(value, null, 2)
-                          : String(value)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <SiteDetailsDialog
+        site={viewingDetails}
+        open={!!viewingDetails}
+        onOpenChange={(open) => !open && setViewingDetails(null)}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
