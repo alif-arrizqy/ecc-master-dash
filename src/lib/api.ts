@@ -987,12 +987,16 @@ export const slaApi = {
   getSites: async (params?: {
     page?: number;
     limit?: number;
-    status?: string;
-    sccType?: string;
-    batteryVersion?: string;
-    province?: string;
-    siteName?: string;
+    search?: string;
+    isActive?: boolean;
+    sortBy?: string;
     sortOrder?: string;
+    status?: string; // terestrial, non_terestrial, non-terestrial
+    province?: string; // province name or region (papua/maluku)
+    sccType?: string; // scc_srne, scc_epever, scc-srne, scc-epever
+    batteryVersion?: string; // talis5, mix, jspro
+    siteId?: string; // Exact match for siteId (takes priority over search)
+    prCode?: string; // Exact match for prCode (takes priority over search)
   }) => {
     return fetchSitesApiPaginated<Array<unknown>>('/api/v1/sites/', { params });
   },
@@ -1045,37 +1049,6 @@ export const slaApi = {
     return response.data.data;
   },
 
-  // GET /api/v1/sites/status/{status}
-  getSitesByStatus: async (status: string, params?: {
-    page?: number;
-    limit?: number;
-  }) => {
-    return fetchSitesApiPaginated<Array<unknown>>(`/api/v1/sites/status/${status}`, { params });
-  },
-
-  // GET /api/v1/sites/scc-type/{type}
-  getSitesBySccType: async (type: string, params?: {
-    page?: number;
-    limit?: number;
-  }) => {
-    return fetchSitesApiPaginated<Array<unknown>>(`/api/v1/sites/scc-type/${type}`, { params });
-  },
-
-  // GET /api/v1/sites/battery-version/{version}
-  getSitesByBatteryVersion: async (version: BatteryVersion, params?: {
-    page?: number;
-    limit?: number;
-  }) => {
-    return fetchSitesApiPaginated<Array<unknown>>(`/api/v1/sites/battery-version/${version}`, { params });
-  },
-
-  // GET /api/v1/sites/province/{province}
-  getSitesByProvince: async (province: string, params?: {
-    page?: number;
-    limit?: number;
-  }) => {
-    return fetchSitesApiPaginated<Array<unknown>>(`/api/v1/sites/province/${province}`, { params });
-  },
 
   // GET /api/v1/sites/statistics
   getSiteStatistics: async () => {
