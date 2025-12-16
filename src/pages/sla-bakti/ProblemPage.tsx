@@ -7,7 +7,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import { slaApi } from '@/lib/api';
 import { format } from 'date-fns';
-import { getSLADateRange } from '@/lib/dateUtils';
+import { getProblemDateRange } from '@/lib/dateUtils';
 import {
   Dialog,
   DialogContent,
@@ -92,7 +92,7 @@ const ProblemPage = () => {
     problems: [{ pic: '', problem: '', notes: '' }],
   });
   const queryClient = useQueryClient();
-  const { startDate, endDate } = getSLADateRange();
+  const { startDate, endDate } = getProblemDateRange();
 
   const { data, isLoading } = useQuery({
     queryKey: ['sla-problems', startDate, endDate],
