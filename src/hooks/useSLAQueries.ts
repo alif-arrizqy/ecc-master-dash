@@ -85,11 +85,12 @@ export function useMonthlyReportSummary(
  */
 export function useSLAReasons(
   batteryVersion: BatteryVersion,
+  params?: { startDate?: string; endDate?: string },
   options?: Omit<UseQueryOptions<SLAReason[], Error>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery<SLAReason[], Error>({
-    queryKey: ['slaReasons', batteryVersion],
-    queryFn: () => slaApi.getSLAReasons(batteryVersion),
+    queryKey: ['slaReasons', batteryVersion, params?.startDate, params?.endDate],
+    queryFn: () => slaApi.getSLAReasonsByBatteryVersion(batteryVersion, params),
     ...options,
   });
 }
