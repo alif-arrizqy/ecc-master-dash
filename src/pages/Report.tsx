@@ -1,6 +1,6 @@
 import Navbar from '@/components/layout/Navbar';
-import FileUpload from '@/components/report/FileUpload';
-import SLADataTable from '@/components/report/SLADataTable';
+import FileUpload from '@/components/sla-bakti/FileUpload';
+import SLADataTable from '@/components/sla-bakti/SLADataTable';
 
 const Report = () => {
   return (

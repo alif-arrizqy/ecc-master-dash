@@ -1,5 +1,5 @@
 import Navbar from '@/components/layout/Navbar';
-import SLADataTable from '@/components/report/SLADataTable';
+import SLADataTable from '@/components/sla-bakti/SLADataTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Database } from 'lucide-react';
 
