@@ -1,0 +1,81 @@
+/**
+ * Custom hooks for Sites Management
+ */
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { slaApi } from '@/lib/api';
+import { Site, SiteFormData, SiteQueryParams } from './types';
+import { ITEMS_PER_PAGE } from './constants';
+
+/**
+ * Hook for fetching sites with filters and pagination
+ */
+export const useSitesQuery = (params: SiteQueryParams) => {
+  return useQuery({
+    queryKey: ['sites', params],
+    queryFn: () => slaApi.getSites(params),
+  });
+};
+
+/**
+ * Hook for creating a new site
+ */
+export const useCreateSite = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: SiteFormData) => slaApi.createSite(data),
+    onSuccess: () => {
+      toast.success('Site berhasil dibuat');
+      queryClient.invalidateQueries({ queryKey: ['sites'] });
+    },
+    onError: (error) => {
+      toast.error('Gagal membuat site', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    },
+  });
+};
+
+/**
+ * Hook for updating a site
+ */
+export const useUpdateSite = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string | number; data: SiteFormData | Partial<Site> }) =>
+      slaApi.updateSite(id, data),
+    onSuccess: () => {
+      toast.success('Site berhasil diupdate');
+      queryClient.invalidateQueries({ queryKey: ['sites'] });
+    },
+    onError: (error) => {
+      toast.error('Gagal mengupdate site', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    },
+  });
+};
+
+/**
+ * Hook for deleting a site
+ */
+export const useDeleteSite = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string | number) => slaApi.deleteSite(id),
+    onSuccess: () => {
+      toast.success('Site berhasil dihapus');
+      queryClient.invalidateQueries({ queryKey: ['sites'] });
+    },
+    onError: (error) => {
+      toast.error('Gagal menghapus site', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    },
+  });
+};
+

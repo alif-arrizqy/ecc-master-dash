@@ -5,10 +5,16 @@
 
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Get environment variables with fallback defaults for development
+const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL || 'http://localhost:3002';
+const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL || 'http://localhost:3001';
 
-if (!API_BASE_URL) {
-  console.warn('VITE_API_BASE_URL is not set. API calls may fail.');
+if (!import.meta.env.VITE_SLA_SERVICES_URL) {
+  console.warn('VITE_SLA_SERVICES_URL is not set. Using default: http://localhost:3002');
+}
+
+if (!import.meta.env.VITE_SITES_SERVICES_URL) {
+  console.warn('VITE_SITES_SERVICES_URL is not set. Using default: http://localhost:3001');
 }
 
 export type BatteryVersion = 'talis5' | 'mix' | 'jspro';
@@ -25,10 +31,10 @@ interface ApiResponse<T> {
 }
 
 /**
- * Create axios instance with base configuration
+ * Create axios instance for SLA Services
  */
-const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL || '',
+const slaApiClient: AxiosInstance = axios.create({
+  baseURL: SLA_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -36,17 +42,21 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 /**
- * Request interceptor
- * Can be used to add auth tokens, modify requests, etc.
+ * Create axios instance for Sites Services
  */
-apiClient.interceptors.request.use(
+const sitesApiClient: AxiosInstance = axios.create({
+  baseURL: SITES_SERVICES_URL,
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Request interceptor for SLA Services
+ */
+slaApiClient.interceptors.request.use(
   (config) => {
-    // Add any request modifications here
-    // Example: Add auth token
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
     return config;
   },
   (error) => {
@@ -55,10 +65,9 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Response interceptor
- * Handle global error responses
+ * Response interceptor for SLA Services
  */
-apiClient.interceptors.response.use(
+slaApiClient.interceptors.response.use(
   (response) => {
     // Check if response has success field and it's false
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
@@ -77,7 +86,7 @@ apiClient.interceptors.response.use(
         ? (error.response.data as { message?: string })?.message || error.message
         : error.message;
       
-      console.error(`API Error [${status}]:`, message);
+      console.error(`SLA API Error [${status}]:`, message);
       
       // You can add specific error handling based on status codes
       switch (status) {
@@ -98,10 +107,10 @@ apiClient.interceptors.response.use(
       }
     } else if (error.request) {
       // Request was made but no response received
-      console.error('API Error: No response received', error.request);
+      console.error('SLA API Error: No response received', error.request);
     } else {
       // Something else happened
-      console.error('API Error:', error.message);
+      console.error('SLA API Error:', error.message);
     }
     
     return Promise.reject(error);
@@ -109,26 +118,119 @@ apiClient.interceptors.response.use(
 );
 
 /**
- * Generic API function with error handling
+ * Request interceptor for Sites Services
+ */
+sitesApiClient.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Response interceptor for Sites Services
+ */
+sitesApiClient.interceptors.response.use(
+  (response) => {
+    // Check if response has success field and it's false
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      if (!response.data.success) {
+        throw new Error('API returned unsuccessful response');
+      }
+    }
+    return response;
+  },
+  (error: AxiosError) => {
+    // Handle different error types
+    if (error.response) {
+      // Server responded with error status
+      const status = error.response.status;
+      const message = error.response.data
+        ? (error.response.data as { message?: string })?.message || error.message
+        : error.message;
+      
+      console.error(`Sites API Error [${status}]:`, message);
+      
+      // You can add specific error handling based on status codes
+      switch (status) {
+        case 401:
+          // Handle unauthorized - maybe redirect to login
+          break;
+        case 403:
+          // Handle forbidden
+          break;
+        case 404:
+          // Handle not found
+          break;
+        case 500:
+          // Handle server error
+          break;
+        default:
+          break;
+      }
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error('Sites API Error: No response received', error.request);
+    } else {
+      // Something else happened
+      console.error('Sites API Error:', error.message);
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Generic API function with error handling for SLA Services
  * Errors are handled by the response interceptor
  */
-async function fetchApi<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
-  const response = await apiClient.get<ApiResponse<T>>(endpoint, config);
+async function fetchSlaApi<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
+  const response = await slaApiClient.get<ApiResponse<T>>(endpoint, config);
   return response.data.data;
 }
 
 /**
- * Generic API function for paginated responses
+ * Generic API function for paginated responses from SLA Services
  * Errors are handled by the response interceptor
  */
-async function fetchApiPaginated<T>(
+async function fetchSlaApiPaginated<T>(
   endpoint: string,
   config?: AxiosRequestConfig
 ): Promise<{ data: T; pagination: ApiResponse<T>['pagination'] }> {
-  const response = await apiClient.get<ApiResponse<T>>(endpoint, config);
+  const response = await slaApiClient.get<ApiResponse<T>>(endpoint, config);
   return {
     data: response.data.data,
     pagination: response.data.pagination,
+  };
+}
+
+/**
+ * Generic API function with error handling for Sites Services
+ * Errors are handled by the response interceptor
+ */
+async function fetchSitesApi<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
+  const response = await sitesApiClient.get<ApiResponse<T>>(endpoint, config);
+  return response.data.data;
+}
+
+/**
+ * Generic API function for paginated responses from Sites Services
+ * Errors are handled by the response interceptor
+ * Response structure: { success: true, data: { data: [...], pagination: {...} } }
+ */
+async function fetchSitesApiPaginated<T>(
+  endpoint: string,
+  config?: AxiosRequestConfig
+): Promise<{ data: T; pagination: ApiResponse<T>['pagination'] }> {
+  const response = await sitesApiClient.get<ApiResponse<{ data: T; pagination: ApiResponse<T>['pagination'] }>>(endpoint, config);
+  // Response structure: response.data = { success: true, data: { data: [...], pagination: {...} } }
+  // So we need to access response.data.data.data for the array and response.data.data.pagination for pagination
+  const responseData = response.data.data as { data: T; pagination: ApiResponse<T>['pagination'] };
+  return {
+    data: responseData.data,
+    pagination: responseData.pagination,
   };
 }
 
@@ -144,7 +246,7 @@ export const slaApi = {
     batteryVersion: BatteryVersion,
     params: { startDate: string; endDate: string }
   ) => {
-    return fetchApi<Array<{ date: string; value: number }>>(
+    return fetchSlaApi<Array<{ date: string; value: number }>>(
       `/api/v1/sla-bakti/daily/chart/battery/${batteryVersion}`,
       {
         params: {
@@ -163,7 +265,7 @@ export const slaApi = {
     startDate: string;
     endDate: string;
   }) => {
-    return fetchApi<Array<{ date: string; value: number }>>(
+    return fetchSlaApi<Array<{ date: string; value: number }>>(
       `/api/v1/sla-bakti/daily/chart/all-sites`,
       {
         params: {
@@ -182,7 +284,7 @@ export const slaApi = {
     startDate: string;
     endDate: string;
   }) => {
-    return fetchApi<Array<{ name: string; value: number }>>(
+    return fetchSlaApi<Array<{ name: string; value: number }>>(
       `/api/v1/sla-bakti/weekly/chart/all-sites`,
       {
         params: {
@@ -198,7 +300,7 @@ export const slaApi = {
    * GET /api/v1/sla-bakti/monthly/summary
    */
   getMonthlyReportSummary: async (period: string) => {
-    return fetchApi<{
+    return fetchSlaApi<{
       summary: {
         dateNow: string;
         totalSite: number;
@@ -248,7 +350,7 @@ export const slaApi = {
     batteryVersion: BatteryVersion,
     params?: { startDate?: string; endDate?: string }
   ) => {
-    return fetchApi<Array<{
+    return fetchSlaApi<Array<{
       id: number;
       reason: string;
       createdAt: string;
@@ -271,7 +373,7 @@ export const slaApi = {
     page?: number;
     limit?: number;
   }) => {
-    return fetchApiPaginated<Array<{
+    return fetchSlaApiPaginated<Array<{
       id: number;
       date: string;
       description: string;
@@ -295,7 +397,7 @@ export const slaApi = {
     startDate: string;
     endDate: string;
   }) => {
-    return fetchApi<{
+    return fetchSlaApi<{
       report: {
         dateNow: string;
         dateBefore: string;
@@ -469,7 +571,7 @@ export const slaApi = {
     page?: number;
     limit?: number;
   }) => {
-    return fetchApi<{
+    return fetchSlaApi<{
       summary: {
         slaAverage: number;
         slaUnit: string;
@@ -540,6 +642,8 @@ export const slaApi = {
     statusSLA?: string;
     pic?: string;
     siteName?: string;
+    slaMin?: number;
+    slaMax?: number;
   }) => {
     const queryParams: Record<string, string | number> = {
       startDate: params.startDate,
@@ -566,9 +670,15 @@ export const slaApi = {
     if (params.siteName) {
       queryParams.siteName = params.siteName;
     }
+    if (params.slaMin !== undefined) {
+      queryParams.slaMin = params.slaMin;
+    }
+    if (params.slaMax !== undefined) {
+      queryParams.slaMax = params.slaMax;
+    }
 
     // API returns pagination inside data object
-    const response = await apiClient.get<ApiResponse<{
+    const response = await slaApiClient.get<ApiResponse<{
       summary: {
         slaAverage: number;
         slaUnit: string;
@@ -636,7 +746,7 @@ export const slaApi = {
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await apiClient.post<ApiResponse<{
+    const response = await slaApiClient.post<ApiResponse<{
       preview: unknown;
       save: unknown;
     }>>('/api/v1/sla-bakti/upload', formData, {
@@ -662,7 +772,7 @@ export const slaApi = {
       notes?: string | null;
     }>;
   }) => {
-    const response = await apiClient.post<ApiResponse<unknown>>('/api/v1/sla-bakti/problems', data);
+    const response = await slaApiClient.post<ApiResponse<unknown>>('/api/v1/sla-bakti/problems', data);
     return response.data.data;
   },
 
@@ -676,7 +786,7 @@ export const slaApi = {
     page?: number;
     limit?: number;
   }) => {
-    return fetchApiPaginated<Array<{
+    return fetchSlaApiPaginated<Array<{
       id: number;
       date: string;
       siteId: string;
@@ -705,13 +815,13 @@ export const slaApi = {
       notes?: string | null;
     }>;
   }) => {
-    const response = await apiClient.patch<ApiResponse<unknown>>(`/api/v1/sla-bakti/problems/${id}`, data);
+    const response = await slaApiClient.patch<ApiResponse<unknown>>(`/api/v1/sla-bakti/problems/${id}`, data);
     return response.data.data;
   },
 
   // DELETE /api/v1/sla-bakti/problems/{id}
   deleteSLAProblem: async (id: number) => {
-    const response = await apiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sla-bakti/problems/${id}`);
+    const response = await slaApiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sla-bakti/problems/${id}`);
     return response.data.data;
   },
 
@@ -720,13 +830,13 @@ export const slaApi = {
    */
   // POST /api/v1/sla-reason/
   createSLAReason: async (data: { reason: string }) => {
-    const response = await apiClient.post<ApiResponse<unknown>>('/api/v1/sla-reason/', data);
+    const response = await slaApiClient.post<ApiResponse<unknown>>('/api/v1/sla-reason/', data);
     return response.data.data;
   },
 
   // GET /api/v1/sla-reason/
   getSLAReasons: async (params?: { page?: number; limit?: number }) => {
-    return fetchApiPaginated<Array<{
+    return fetchSlaApiPaginated<Array<{
       id: number;
       reason: string;
       createdAt: string;
@@ -736,7 +846,7 @@ export const slaApi = {
 
   // GET /api/v1/sla-reason/{id}
   getSLAReason: async (id: number) => {
-    return fetchApi<{
+    return fetchSlaApi<{
       id: number;
       reason: string;
       createdAt: string;
@@ -746,13 +856,13 @@ export const slaApi = {
 
   // PATCH /api/v1/sla-reason/{id}
   updateSLAReason: async (id: number, data: { reason: string }) => {
-    const response = await apiClient.patch<ApiResponse<unknown>>(`/api/v1/sla-reason/${id}`, data);
+    const response = await slaApiClient.patch<ApiResponse<unknown>>(`/api/v1/sla-reason/${id}`, data);
     return response.data.data;
   },
 
   // DELETE /api/v1/sla-reason/{id}
   deleteSLAReason: async (id: number) => {
-    const response = await apiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sla-reason/${id}`);
+    const response = await slaApiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sla-reason/${id}`);
     return response.data.data;
   },
 
@@ -761,13 +871,13 @@ export const slaApi = {
     batteryVersion: BatteryVersion;
     reasonId: number;
   }) => {
-    const response = await apiClient.post<ApiResponse<unknown>>('/api/v1/sla-reason/battery-version', data);
+    const response = await slaApiClient.post<ApiResponse<unknown>>('/api/v1/sla-reason/battery-version', data);
     return response.data.data;
   },
 
   // DELETE /api/v1/sla-reason/battery-version/{id}
   deleteSLAReasonBatteryVersion: async (id: number) => {
-    const response = await apiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sla-reason/battery-version/${id}`);
+    const response = await slaApiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sla-reason/battery-version/${id}`);
     return response.data.data;
   },
 
@@ -779,7 +889,7 @@ export const slaApi = {
     date: string;
     description: string;
   }) => {
-    const response = await apiClient.post<ApiResponse<unknown>>('/api/v1/history-gamas/', data);
+    const response = await slaApiClient.post<ApiResponse<unknown>>('/api/v1/history-gamas/', data);
     return response.data.data;
   },
 
@@ -790,7 +900,7 @@ export const slaApi = {
     page?: number;
     limit?: number;
   }) => {
-    return fetchApiPaginated<Array<{
+    return fetchSlaApiPaginated<Array<{
       id: number;
       date: string;
       description: string;
@@ -801,7 +911,7 @@ export const slaApi = {
 
   // GET /api/v1/history-gamas/{id}
   getHistoryGAMASById: async (id: number) => {
-    return fetchApi<{
+    return fetchSlaApi<{
       id: number;
       date: string;
       description: string;
@@ -815,13 +925,13 @@ export const slaApi = {
     date?: string;
     description?: string;
   }) => {
-    const response = await apiClient.patch<ApiResponse<unknown>>(`/api/v1/history-gamas/${id}`, data);
+    const response = await slaApiClient.patch<ApiResponse<unknown>>(`/api/v1/history-gamas/${id}`, data);
     return response.data.data;
   },
 
   // DELETE /api/v1/history-gamas/{id}
   deleteHistoryGAMAS: async (id: number) => {
-    const response = await apiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/history-gamas/${id}`);
+    const response = await slaApiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/history-gamas/${id}`);
     return response.data.data;
   },
 
@@ -835,7 +945,7 @@ export const slaApi = {
     page?: number;
     limit?: number;
   }) => {
-    return fetchApiPaginated<Array<unknown>>('/api/v1/sla-bakti/raw', { params });
+    return fetchSlaApiPaginated<Array<unknown>>('/api/v1/sla-bakti/raw', { params });
   },
 
   // DELETE /api/v1/sla-bakti/raw
@@ -843,7 +953,7 @@ export const slaApi = {
     startDate: string;
     endDate: string;
   }) => {
-    const response = await apiClient.delete<ApiResponse<{ message: string; deletedCount?: number }>>('/api/v1/sla-bakti/raw', {
+    const response = await slaApiClient.delete<ApiResponse<{ message: string; deletedCount?: number }>>('/api/v1/sla-bakti/raw', {
       params,
     });
     return response.data.data;
@@ -856,7 +966,7 @@ export const slaApi = {
     page?: number;
     limit?: number;
   }) => {
-    return fetchApiPaginated<Array<unknown>>(`/api/v1/sla-bakti/raw/${siteId}`, { params });
+    return fetchSlaApiPaginated<Array<unknown>>(`/api/v1/sla-bakti/raw/${siteId}`, { params });
   },
 
   // DELETE /api/v1/sla-bakti/raw/{siteId}
@@ -864,10 +974,90 @@ export const slaApi = {
     startDate?: string;
     endDate?: string;
   }) => {
-    const response = await apiClient.delete<ApiResponse<{ message: string; deletedCount?: number }>>(`/api/v1/sla-bakti/raw/${siteId}`, {
+    const response = await slaApiClient.delete<ApiResponse<{ message: string; deletedCount?: number }>>(`/api/v1/sla-bakti/raw/${siteId}`, {
       params,
     });
     return response.data.data;
+  },
+
+  /**
+   * Sites Management CRUD
+   */
+  // GET /api/v1/sites/
+  getSites: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    isActive?: boolean;
+    sortBy?: string;
+    sortOrder?: string;
+    status?: string; // terestrial, non_terestrial, non-terestrial
+    province?: string; // province name or region (papua/maluku)
+    sccType?: string; // scc_srne, scc_epever, scc-srne, scc-epever
+    batteryVersion?: string; // talis5, mix, jspro
+    siteId?: string; // Exact match for siteId (takes priority over search)
+    prCode?: string; // Exact match for prCode (takes priority over search)
+  }) => {
+    return fetchSitesApiPaginated<Array<unknown>>('/api/v1/sites/', { params });
+  },
+
+  // POST /api/v1/sites/
+  createSite: async (data: unknown) => {
+    const response = await sitesApiClient.post<ApiResponse<unknown>>('/api/v1/sites/', data);
+    return response.data.data;
+  },
+
+  // GET /api/v1/sites/{id}
+  getSiteById: async (id: string | number) => {
+    return fetchSitesApi<{
+      id: number;
+      site_id: string;
+      site_name: string;
+      province: string;
+      ip_snmp?: string;
+      scc_type?: string;
+      battery_version?: string;
+      total_battery?: number;
+      talis_installed?: string;
+      status?: string;
+      webapp_url?: string;
+      [key: string]: unknown;
+    }>(`/api/v1/sites/${id}`);
+  },
+
+  // PUT /api/v1/sites/{id}
+  updateSite: async (id: string | number, data: {
+    site_id?: string;
+    site_name?: string;
+    province?: string;
+    ip_snmp?: string;
+    scc_type?: string;
+    battery_version?: string;
+    total_battery?: number;
+    talis_installed?: string;
+    status?: string;
+    webapp_url?: string;
+    [key: string]: unknown;
+  }) => {
+    const response = await sitesApiClient.put<ApiResponse<unknown>>(`/api/v1/sites/${id}`, data);
+    return response.data.data;
+  },
+
+  // DELETE /api/v1/sites/{id}
+  deleteSite: async (id: string | number) => {
+    const response = await sitesApiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sites/${id}`);
+    return response.data.data;
+  },
+
+
+  // GET /api/v1/sites/statistics
+  getSiteStatistics: async () => {
+    return fetchSitesApi<{
+      total: number;
+      byStatus: Record<string, number>;
+      bySccType: Record<string, number>;
+      byBatteryVersion: Record<string, number>;
+    }>('/api/v1/sites/statistics');
   },
 };
 

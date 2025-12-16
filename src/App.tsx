@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import UnderDevelopment from "./pages/UnderDevelopment";
 
+// Sites Pages
+import SitesPage from "./pages/sites/SitesPage";
+
 // SLA Bakti Pages
 import UploadPage from "./pages/sla-bakti/UploadPage";
 import MasterDataPage from "./pages/sla-bakti/MasterDataPage";
@@ -25,6 +28,9 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          
+          {/* Sites Routes */}
+          <Route path="/sites" element={<SitesPage />} />
           
           {/* Monitoring Routes */}
           <Route path="/monitoring/x" element={<UnderDevelopment title="Menu X" description="Halaman monitoring menu X" />} />
