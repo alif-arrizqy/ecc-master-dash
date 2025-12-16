@@ -5,7 +5,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { slaApi } from '@/lib/api';
-import { Site, SiteFormData, SiteQueryParams } from './types';
+import { Site, SiteFormData, SiteQueryParams, SiteStatistics } from './types';
 import { ITEMS_PER_PAGE } from './constants';
 
 /**
@@ -76,6 +76,17 @@ export const useDeleteSite = () => {
         description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
+  });
+};
+
+/**
+ * Hook for fetching site statistics
+ */
+export const useSiteStatistics = () => {
+  return useQuery({
+    queryKey: ['sites', 'statistics'],
+    queryFn: () => slaApi.getSiteStatistics(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 

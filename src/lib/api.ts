@@ -1053,10 +1053,43 @@ export const slaApi = {
   // GET /api/v1/sites/statistics
   getSiteStatistics: async () => {
     return fetchSitesApi<{
-      total: number;
-      byStatus: Record<string, number>;
-      bySccType: Record<string, number>;
-      byBatteryVersion: Record<string, number>;
+      summary: {
+        talis5: { totalSites: number };
+        mix: { totalSites: number };
+        jspro: { totalSites: number };
+      };
+      maluku: {
+        totalSite: {
+          all: number;
+          active: number;
+          inactive: number;
+        };
+        byProvince: Array<{ province: string; count: number }>;
+        byBatteryVersion: {
+          [key: string]: {
+            summary: { total: number };
+            sites: Array<{ siteId: string; siteName: string }>;
+          };
+        };
+        byStatusSites: Record<string, number>;
+        bySccType: Record<string, number>;
+      };
+      papua: {
+        totalSite: {
+          all: number;
+          active: number;
+          inactive: number;
+        };
+        byProvince: Array<{ province: string; count: number }>;
+        byBatteryVersion: {
+          [key: string]: {
+            summary: { total: number };
+            sites: Array<{ siteId: string; siteName: string }>;
+          };
+        };
+        byStatusSites: Record<string, number>;
+        bySccType: Record<string, number>;
+      };
     }>('/api/v1/sites/statistics');
   },
 };
