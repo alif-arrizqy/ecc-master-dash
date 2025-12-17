@@ -47,8 +47,14 @@ export const useUpdateSite = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string | number; data: SiteFormData | Partial<Site> }) =>
       slaApi.updateSite(id, data),
-    onSuccess: () => {
-      toast.success('Site berhasil diupdate');
+    onSuccess: (_, variables) => {
+      // Check if this is an activate/deactivate action
+      if (typeof variables.data === 'object' && variables.data !== null && 'isActive' in variables.data) {
+        const isActive = variables.data.isActive;
+        toast.success(isActive ? 'Site berhasil diaktifkan' : 'Site berhasil dinonaktifkan');
+      } else {
+        toast.success('Site berhasil diupdate');
+      }
       queryClient.invalidateQueries({ queryKey: ['sites'] });
     },
     onError: (error) => {
@@ -66,9 +72,9 @@ export const useDeleteSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string | number) => slaApi.deleteSite(id),
-    onSuccess: () => {
-      toast.success('Site berhasil dihapus');
+    mutationFn: ({ id, hard }: { id: string | number; hard?: boolean }) => slaApi.deleteSite(id, hard),
+    onSuccess: (_, variables) => {
+      toast.success(variables.hard ? 'Site berhasil dihapus permanen' : 'Site berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['sites'] });
     },
     onError: (error) => {

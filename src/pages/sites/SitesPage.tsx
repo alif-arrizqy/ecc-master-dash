@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -56,9 +57,11 @@ const SitesPage = () => {
   const [sccTypeFilter, setSccTypeFilter] = useState<string>('all');
   const [batteryVersionFilter, setBatteryVersionFilter] = useState<string>('all');
   const [provinceFilter, setProvinceFilter] = useState<string>('all');
+  const [isActiveFilter, setIsActiveFilter] = useState<string>('true'); // Default hanya aktif
   const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteAction, setDeleteAction] = useState<'delete' | 'activate' | 'deactivate'>('delete');
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [viewingDetails, setViewingDetails] = useState<Site | null>(null);
@@ -100,6 +103,11 @@ const SitesPage = () => {
   // Normalize province to lowercase to match API expectations (papua/maluku)
   if (provinceFilter !== 'all' && provinceFilter) {
     queryParams.province = provinceFilter.toLowerCase();
+  }
+
+  // Add isActive filter (default true - hanya aktif)
+  if (isActiveFilter !== 'all') {
+    queryParams.isActive = isActiveFilter === 'true';
   }
 
   // Data fetching
@@ -178,6 +186,12 @@ const SitesPage = () => {
 
   const handleDelete = (site: Site) => {
     setSelectedSite(site);
+    // Set default action berdasarkan status site
+    if (site.isActive) {
+      setDeleteAction('deactivate'); // Default untuk site aktif adalah deactivate
+    } else {
+      setDeleteAction('activate'); // Default untuk site nonaktif adalah activate
+    }
     setIsDeleteDialogOpen(true);
   };
 
@@ -208,12 +222,33 @@ const SitesPage = () => {
   };
 
   const handleConfirmDelete = () => {
-    if (selectedSite) {
-      deleteMutation.mutate(selectedSite.siteId, {
-        onSuccess: () => {
-          setIsDeleteDialogOpen(false);
+    if (!selectedSite) return;
+
+    if (deleteAction === 'delete') {
+      // Hard delete
+      deleteMutation.mutate(
+        { id: selectedSite.siteId, hard: true },
+        {
+          onSuccess: () => {
+            setIsDeleteDialogOpen(false);
+            setSelectedSite(null);
+          },
+        }
+      );
+    } else if (deleteAction === 'activate' || deleteAction === 'deactivate') {
+      // Update isActive status
+      updateMutation.mutate(
+        {
+          id: selectedSite.siteId,
+          data: { isActive: deleteAction === 'activate' },
         },
-      });
+        {
+          onSuccess: () => {
+            setIsDeleteDialogOpen(false);
+            setSelectedSite(null);
+          },
+        }
+      );
     }
   };
 
@@ -238,6 +273,9 @@ const SitesPage = () => {
         break;
       case 'province':
         setProvinceFilter(value);
+        break;
+      case 'isActive':
+        setIsActiveFilter(value);
         break;
     }
   };
@@ -339,11 +377,13 @@ const SitesPage = () => {
           sccTypeFilter={sccTypeFilter}
           batteryVersionFilter={batteryVersionFilter}
           provinceFilter={provinceFilter}
+          isActiveFilter={isActiveFilter}
           onSearchChange={(value) => handleFilterChange('search', value)}
           onStatusChange={(value) => handleFilterChange('status', value)}
           onSccTypeChange={(value) => handleFilterChange('sccType', value)}
           onBatteryVersionChange={(value) => handleFilterChange('batteryVersion', value)}
           onProvinceChange={(value) => handleFilterChange('province', value)}
+          onIsActiveChange={(value) => handleFilterChange('isActive', value)}
         />
 
         {/* Data Table */}
@@ -413,23 +453,72 @@ const SitesPage = () => {
         onOpenChange={(open) => !open && setViewingDetails(null)}
       />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete/Activate/Deactivate Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Site</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteAction === 'delete'
+                ? 'Hapus Permanen Site'
+                : deleteAction === 'activate'
+                  ? 'Aktifkan Site'
+                  : 'Nonaktifkan Site'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus site "{selectedSite?.siteName}" (
-              {selectedSite?.siteId})? Tindakan ini tidak dapat dibatalkan.
+              {deleteAction === 'delete' ? (
+                <>
+                  Apakah Anda yakin ingin menghapus permanen site "{selectedSite?.siteName}" (
+                  {selectedSite?.siteId})? Tindakan ini tidak dapat dibatalkan.
+                </>
+              ) : deleteAction === 'activate' ? (
+                <>
+                  Apakah Anda yakin ingin mengaktifkan site "{selectedSite?.siteName}" (
+                  {selectedSite?.siteId})?
+                </>
+              ) : (
+                <>
+                  Apakah Anda yakin ingin menonaktifkan site "{selectedSite?.siteName}" (
+                  {selectedSite?.siteId})?
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-4">
+            <Label className="mb-2 block">Pilih Aksi:</Label>
+            <Select value={deleteAction} onValueChange={(value) => setDeleteAction(value as typeof deleteAction)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedSite?.isActive ? (
+                  <>
+                    <SelectItem value="deactivate">Nonaktifkan Site</SelectItem>
+                    <SelectItem value="delete">Hapus Permanen</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="activate">Aktifkan Site</SelectItem>
+                    <SelectItem value="delete">Hapus Permanen</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={
+                deleteAction === 'delete'
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : ''
+              }
             >
-              Hapus
+              {deleteAction === 'delete'
+                ? 'Hapus Permanen'
+                : deleteAction === 'activate'
+                  ? 'Aktifkan'
+                  : 'Nonaktifkan'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
