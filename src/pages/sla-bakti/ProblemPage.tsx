@@ -1,6 +1,6 @@
 import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Plus, Edit, Trash2, Search, Calendar, Check, ChevronsUpDown } from 'lucide-react';
+import { AlertTriangle, Plus, Edit, Trash2, Search, Calendar, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState, useMemo, useEffect } from 'react';
@@ -33,7 +33,6 @@ import { Loading } from '@/components/ui/loading';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination';
-import { cn } from '@/lib/utils';
 
 interface Site {
   id?: number;
@@ -436,12 +435,6 @@ const ProblemPage = () => {
                                           setSiteSearchQuery('');
                                         }}
                                       >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4 shrink-0",
-                                            isSelected ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
                                         <div className="flex flex-col">
                                           <span>{formatSiteName(site.site_name) || 'Unknown'}</span>
                                           <span className="text-xs text-muted-foreground">
