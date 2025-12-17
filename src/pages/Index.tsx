@@ -18,12 +18,17 @@ import {
   useSLAReportDetail,
   usePotensiSPSites,
 } from '@/hooks/useSLAQueries';
-import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getPotensiSPDateRange } from '@/lib/dateUtils';
+import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getPotensiSPDateRange, getSLADashboardDateRange } from '@/lib/dateUtils';
 import WeeklyTrendChart from './dashboard/components/WeeklyTrendChart';
 import { SLAReportDetail, PotensiSPSitesResponse } from '@/types/api';
 
 const Index = () => {
+  // Get date range for dashboard charts (daily charts, SLA reasons, weekly chart, GAMAS history)
+  // Rules: tanggal 1 = bulan sebelumnya (full month), tanggal 2+ = bulan ini (full month)
+  const dashboardDateRange = getSLADashboardDateRange();
+  
   // Get SLA date range (mengikuti rules: tanggal 1 = bulan sebelumnya, tanggal 2+ = bulan ini)
+  // Note: This is kept for backward compatibility but may not be used for dashboard charts
   const { startDate, endDate } = getSLADateRange();
   const currentPeriod = getSLAMonthPeriod();
   const currentMonthName = getSLAMonthName();
@@ -35,59 +40,59 @@ const Index = () => {
     error: errorSummary 
   } = useMonthlyReportSummary(currentPeriod);
 
-  // Fetch daily SLA charts
+  // Fetch daily SLA charts (using dashboard date range)
   const { 
     data: dailySLAAllSite, 
     isLoading: isLoadingAllSites,
     error: errorAllSites 
-  } = useDailySLAChartAllSites({ startDate, endDate });
+  } = useDailySLAChartAllSites({ startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
 
   const { 
     data: dailySLATalis5Full, 
     isLoading: isLoadingTalis5Full,
     error: errorTalis5Full 
-  } = useDailySLAChartByBatteryVersion('talis5', { startDate, endDate });
+  } = useDailySLAChartByBatteryVersion('talis5', { startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
 
   const { 
     data: dailySLATalis5Mix, 
     isLoading: isLoadingTalis5Mix,
     error: errorTalis5Mix 
-  } = useDailySLAChartByBatteryVersion('mix', { startDate, endDate });
+  } = useDailySLAChartByBatteryVersion('mix', { startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
 
   const { 
     data: dailySLAJSPro, 
     isLoading: isLoadingJSPro,
     error: errorJSPro 
-  } = useDailySLAChartByBatteryVersion('jspro', { startDate, endDate });
+  } = useDailySLAChartByBatteryVersion('jspro', { startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
 
-  // Fetch SLA reasons
+  // Fetch SLA reasons (using dashboard date range)
   const { 
     data: slaReasonsTalis5, 
     isLoading: isLoadingReasonsTalis5 
-  } = useSLAReasons('talis5', { startDate, endDate });
+  } = useSLAReasons('talis5', { startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
   
   const { 
     data: slaReasonsMix, 
     isLoading: isLoadingReasonsMix 
-  } = useSLAReasons('mix', { startDate, endDate });
+  } = useSLAReasons('mix', { startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
   
   const { 
     data: slaReasonsJSPro, 
     isLoading: isLoadingReasonsJSPro 
-  } = useSLAReasons('jspro', { startDate, endDate });
+  } = useSLAReasons('jspro', { startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
 
-  // Fetch weekly SLA chart
+  // Fetch weekly SLA chart (using dashboard date range)
   const { 
     data: weeklyTrendData, 
     isLoading: isLoadingWeekly,
     error: errorWeekly 
-  } = useWeeklySLAChartAllSites({ startDate, endDate });
+  } = useWeeklySLAChartAllSites({ startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
 
-  // Fetch GAMAS history
+  // Fetch GAMAS history (using dashboard date range)
   const { 
     data: gamasHistoryData, 
     isLoading: isLoadingGAMAS 
-  } = useGAMASHistory({ startDate, endDate, limit: 5 });
+  } = useGAMASHistory({ startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate, limit: 5 });
 
   // Fetch detailed SLA report (menggunakan date range khusus untuk report)
   const reportDateRange = getSLAReportDateRange();
