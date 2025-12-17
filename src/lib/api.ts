@@ -1055,8 +1055,9 @@ export const slaApi = {
   },
 
   // DELETE /api/v1/sites/{id}
-  deleteSite: async (id: string | number) => {
-    const response = await sitesApiClient.delete<ApiResponse<{ message: string }>>(`/api/v1/sites/${id}`);
+  deleteSite: async (id: string | number, hard: boolean = false) => {
+    const url = hard ? `/api/v1/sites/${id}?hard=true` : `/api/v1/sites/${id}`;
+    const response = await sitesApiClient.delete<ApiResponse<{ message: string }>>(url);
     return response.data.data;
   },
 

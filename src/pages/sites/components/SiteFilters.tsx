@@ -14,11 +14,13 @@ interface SiteFiltersProps {
   sccTypeFilter: string;
   batteryVersionFilter: string;
   provinceFilter: string;
+  isActiveFilter: string;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: string) => void;
   onSccTypeChange: (value: string) => void;
   onBatteryVersionChange: (value: string) => void;
   onProvinceChange: (value: string) => void;
+  onIsActiveChange: (value: string) => void;
 }
 
 export const SiteFilters = ({
@@ -27,16 +29,18 @@ export const SiteFilters = ({
   sccTypeFilter,
   batteryVersionFilter,
   provinceFilter,
+  isActiveFilter,
   onSearchChange,
   onStatusChange,
   onSccTypeChange,
   onBatteryVersionChange,
   onProvinceChange,
+  onIsActiveChange,
 }: SiteFiltersProps) => {
   return (
     <Card className="mb-6 card-shadow animate-slide-up">
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -96,6 +100,16 @@ export const SiteFilters = ({
                   {prov}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={isActiveFilter} onValueChange={onIsActiveChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Status Site" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="true">Site Aktif</SelectItem>
+              <SelectItem value="false">Site Nonaktif</SelectItem>
+              <SelectItem value="all">Semua Site</SelectItem>
             </SelectContent>
           </Select>
         </div>
