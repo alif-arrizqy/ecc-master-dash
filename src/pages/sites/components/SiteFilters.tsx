@@ -68,7 +68,7 @@ export const SiteFilters = ({
               <SelectValue placeholder="SCC Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua SCC Type</SelectItem>
+              <SelectItem value="all">Semua SCC</SelectItem>
               {SCC_TYPES.map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
@@ -81,7 +81,7 @@ export const SiteFilters = ({
               <SelectValue placeholder="Battery Version" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Battery</SelectItem>
+              <SelectItem value="all">Semua Baterai</SelectItem>
               {BATTERY_VERSIONS.map((bv) => (
                 <SelectItem key={bv.value} value={bv.value}>
                   {bv.label}
@@ -94,7 +94,7 @@ export const SiteFilters = ({
               <SelectValue placeholder="Province" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Province</SelectItem>
+              <SelectItem value="all">Semua Provinsi</SelectItem>
               {PROVINCES.map((prov) => (
                 <SelectItem key={prov} value={prov}>
                   {prov}
