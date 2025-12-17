@@ -108,6 +108,17 @@ slaApiClient.interceptors.response.use(
     } else if (error.request) {
       // Request was made but no response received
       console.error('SLA API Error: No response received', error.request);
+      
+      // Check if it's a CORS error
+      if (error.request.status === 0 || error.code === 'ERR_FAILED') {
+        const isCorsError = error.message?.includes('CORS') || 
+                           error.message?.includes('blocked by CORS') ||
+                           error.message?.includes('Access-Control');
+        if (isCorsError) {
+          const corsError = new Error('CORS Error: Server tidak mengizinkan method ini. Pastikan backend sudah mengkonfigurasi CORS dengan benar.');
+          return Promise.reject(corsError);
+        }
+      }
     } else {
       // Something else happened
       console.error('SLA API Error:', error.message);

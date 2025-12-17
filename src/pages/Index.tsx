@@ -1,10 +1,10 @@
 import Navbar from '@/components/layout/Navbar';
-import SummaryTable from '@/components/dashboard/SummaryTable';
-import DailySLAChart from '@/components/dashboard/DailySLAChart';
-import CompactDailySLAChart from '@/components/dashboard/CompactDailySLAChart';
-import SLACausesTable from '@/components/dashboard/SLACausesTable';
-import GAMASHistoryCard from '@/components/dashboard/GAMASHistoryCard';
-import ReportSection from '@/components/dashboard/ReportSection';
+import SummaryTable from './dashboard/components/SummaryTable';
+import DailySLAChart from './dashboard/components/DailySLAChart';
+import CompactDailySLAChart from './dashboard/components/CompactDailySLAChart';
+import SLACausesTable from './dashboard/components/SLACausesTable';
+import GAMASHistoryCard from './dashboard/components/GAMASHistoryCard';
+import ReportSection from './dashboard/components/ReportSection';
 import { Loading } from '@/components/ui/loading';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -19,7 +19,7 @@ import {
   usePotensiSPSites,
 } from '@/hooks/useSLAQueries';
 import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getPotensiSPDateRange } from '@/lib/dateUtils';
-import WeeklyTrendChart from '@/components/dashboard/WeeklyTrendChart';
+import WeeklyTrendChart from './dashboard/components/WeeklyTrendChart';
 import { SLAReportDetail, PotensiSPSitesResponse } from '@/types/api';
 
 const Index = () => {

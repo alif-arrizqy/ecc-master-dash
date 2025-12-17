@@ -702,3 +702,4 @@ const SLADataTable = () => {
 };
 
 export default SLADataTable;
+
