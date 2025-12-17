@@ -13,7 +13,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -66,15 +65,9 @@ const SitesPage = () => {
   const [formData, setFormData] = useState<SiteFormData>({
     siteId: '',
     siteName: '',
-    ipSnmp: '',
-    sccType: '',
-    batteryVersion: '',
-    totalBattery: undefined,
-    statusSites: '',
-    webappUrl: '',
+    isActive: true,
     detail: {
       province: '',
-      talisInstalled: '',
     },
   });
 
@@ -116,20 +109,61 @@ const SitesPage = () => {
   const updateMutation = useUpdateSite();
   const deleteMutation = useDeleteSite();
 
+  // Helper function to map Site to SiteFormData
+  const mapSiteToFormData = (site: Site): SiteFormData => {
+    return {
+      prCode: site.prCode || '',
+      siteId: site.siteId,
+      clusterId: site.clusterId || '',
+      terminalId: site.terminalId || '',
+      siteName: site.siteName,
+      ipSnmp: site.ipSnmp || '',
+      ipMiniPc: site.ipMiniPc || '',
+      webappUrl: site.webappUrl || '',
+      ehubVersion: site.ehubVersion || '',
+      panel2Type: site.panel2Type || '',
+      sccType: site.sccType || '',
+      batteryVersion: site.batteryVersion || '',
+      totalBattery: site.totalBattery,
+      statusSites: site.statusSites || '',
+      isActive: site.isActive ?? true,
+      detail: {
+        village: site.detail?.village || '',
+        subdistrict: site.detail?.subdistrict || '',
+        regency: site.detail?.regency || '',
+        province: site.detail?.province || '',
+        longitude: site.detail?.longitude ? parseFloat(String(site.detail.longitude)) : undefined,
+        latitude: site.detail?.latitude ? parseFloat(String(site.detail.latitude)) : undefined,
+        ipGatewayGs: site.detail?.ipGatewayGs || '',
+        ipGatewayLc: site.detail?.ipGatewayLc || '',
+        subnet: site.detail?.subnet || '',
+        batteryList: (site.detail?.batteryList || []) as string[],
+        cabinetList: (site.detail?.cabinetList || []) as string[],
+        buildYear: site.detail?.buildYear || '',
+        projectPhase: site.detail?.projectPhase || '',
+        onairDate: site.detail?.onairDate || '',
+        gsSustainDate: site.detail?.gsSustainDate || '',
+        topoSustainDate: site.detail?.topoSustainDate || '',
+        talisInstalled: site.detail?.talisInstalled || '',
+        providerGs: site.detail?.providerGs || '',
+        beamProvider: site.detail?.beamProvider || '',
+        cellularOperator: site.detail?.cellularOperator || '',
+        contactPerson: (site.detail?.contactPerson || []).map((cp) => ({
+          name: cp.name || '',
+          phone: cp.phone || '',
+        })),
+      },
+    };
+  };
+
   // Handlers
   const resetForm = () => {
     setFormData({
       siteId: '',
       siteName: '',
-      ipSnmp: '',
-      sccType: '',
-      batteryVersion: '',
-      totalBattery: undefined,
-      statusSites: '',
-      webappUrl: '',
+      isActive: true,
       detail: {
         province: '',
-        talisInstalled: '',
       },
     });
     setEditingId(null);
@@ -138,20 +172,7 @@ const SitesPage = () => {
 
   const handleEdit = (site: Site) => {
     setEditingId(site.siteId);
-    setFormData({
-      siteId: site.siteId,
-      siteName: site.siteName,
-      ipSnmp: site.ipSnmp || '',
-      sccType: site.sccType || '',
-      batteryVersion: site.batteryVersion || '',
-      totalBattery: site.totalBattery,
-      statusSites: site.statusSites || '',
-      webappUrl: site.webappUrl || '',
-      detail: {
-        province: site.detail?.province || '',
-        talisInstalled: site.detail?.talisInstalled || '',
-      },
-    });
+    setFormData(mapSiteToFormData(site));
     setIsDialogOpen(true);
   };
 
@@ -262,7 +283,7 @@ const SitesPage = () => {
                   Tambah Site
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingId ? 'Edit' : 'Tambah'} Site</DialogTitle>
                   <DialogDescription>Masukkan detail site</DialogDescription>
@@ -272,18 +293,31 @@ const SitesPage = () => {
                   editingId={editingId}
                   isSubmitting={createMutation.isPending || updateMutation.isPending}
                   onChange={setFormData}
+                  onCancel={() => {
+                    setIsDialogOpen(false);
+                    resetForm();
+                  }}
+                  onSubmit={(data) => {
+                    if (editingId) {
+                      updateMutation.mutate(
+                        { id: editingId, data },
+                        {
+                          onSuccess: () => {
+                            setIsDialogOpen(false);
+                            resetForm();
+                          },
+                        }
+                      );
+                    } else {
+                      createMutation.mutate(data, {
+                        onSuccess: () => {
+                          setIsDialogOpen(false);
+                          resetForm();
+                        },
+                      });
+                    }
+                  }}
                 />
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Batal
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                  >
-                    {editingId ? 'Update' : 'Simpan'}
-                  </Button>
-                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
