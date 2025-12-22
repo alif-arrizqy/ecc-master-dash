@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { picTypes, Site, Problem } from '@/data/mockData';
-import { cn, getSLADateRange } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { getSLADateRange } from '@/lib/dateUtils';
 import { format } from 'date-fns';
 import { slaApi } from '@/lib/api';
 import SiteDetailModal from './SiteDetailModal';
@@ -54,6 +55,8 @@ const SLADataTable = () => {
   const [statusSLAFilter, setStatusSLAFilter] = useState<string>('all');
   const [picFilter, setPicFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
+  const [slaMin, setSlaMin] = useState<number | undefined>(undefined);
+  const [slaMax, setSlaMax] = useState<number | undefined>(undefined);
   const [sortField, setSortField] = useState<SortField>('siteName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -176,6 +179,8 @@ const SLADataTable = () => {
           statusSLA,
           pic: picFilter !== 'all' ? picFilter : undefined,
           siteName: searchDebounce || undefined,
+          slaMin: slaMin !== undefined ? slaMin : undefined,
+          slaMax: slaMax !== undefined ? slaMax : undefined,
         });
 
         setApiData({
@@ -196,7 +201,7 @@ const SLADataTable = () => {
     };
 
     fetchData();
-  }, [currentPage, batteryFilter, provinceFilter, statusSPFilter, statusSLAFilter, picFilter, searchDebounce, dateRange.from, dateRange.to]);
+  }, [currentPage, batteryFilter, provinceFilter, statusSPFilter, statusSLAFilter, picFilter, searchDebounce, dateRange.from, dateRange.to, slaMin, slaMax]);
 
   // Map API sites to component format
   const mappedSites = useMemo(() => {
@@ -311,10 +316,12 @@ const SLADataTable = () => {
     setStatusSLAFilter('all');
     setPicFilter('all');
     setDateRange({});
+    setSlaMin(undefined);
+    setSlaMax(undefined);
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = searchTerm || batteryFilter !== 'all' || provinceFilter !== 'all' || statusSPFilter !== 'all' || statusSLAFilter !== 'all' || picFilter !== 'all' || dateRange.from || dateRange.to;
+  const hasActiveFilters = searchTerm || batteryFilter !== 'all' || provinceFilter !== 'all' || statusSPFilter !== 'all' || statusSLAFilter !== 'all' || picFilter !== 'all' || dateRange.from || dateRange.to || slaMin !== undefined || slaMax !== undefined;
 
   const columns: { key: SortField; label: string }[] = [
     { key: 'siteName', label: 'Site Name' },
@@ -466,6 +473,32 @@ const SLADataTable = () => {
                 />
               </PopoverContent>
             </Popover>
+
+          </div>
+
+          {/* Quick Filter: SLA < 95% */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={slaMin === 0 && slaMax === 95 ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                if (slaMin === 0 && slaMax === 95) {
+                  setSlaMin(undefined);
+                  setSlaMax(undefined);
+                } else {
+                  setSlaMin(0);
+                  setSlaMax(95);
+                }
+                setCurrentPage(1);
+              }}
+            >
+              SLA &lt; 95%
+            </Button>
+            {(slaMin !== undefined || slaMax !== undefined) && (
+              <span className="text-sm text-muted-foreground">
+                Filter: {slaMin !== undefined ? `Min ${slaMin}%` : 'Min -'} - {slaMax !== undefined ? `Max ${slaMax}%` : 'Max -'}
+              </span>
+            )}
           </div>
         </div>
 
@@ -670,3 +703,4 @@ const SLADataTable = () => {
 };
 
 export default SLADataTable;
+

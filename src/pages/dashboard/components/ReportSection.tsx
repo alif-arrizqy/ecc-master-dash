@@ -50,42 +50,89 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
       batteryData: typeof report.detail.batteryVersion.talis5,
       batteryName: string
     ) => {
-      let section = `📈 ${batteryName.toUpperCase()} (${batteryData.summary.totalSites} Site)\n`;
-      section += `${batteryData.message}\n`;
-      section += `SLA Average: ${batteryData.summary.sla.toFixed(2)}%\n\n`;
+      // Add null/undefined checks
+      if (!batteryData || !batteryData.summary) {
+        return `📈 ${batteryName.toUpperCase()} - Data tidak tersedia\n\n`;
+      }
+
+      const totalSites = batteryData.summary.totalSites || 0;
+      const sla = batteryData.summary.sla || 0;
+      const message = batteryData.message || '';
+
+      let section = `📈 ${batteryName.toUpperCase()} (${totalSites} Site)\n`;
+      if (message) {
+        section += `${message}\n`;
+      }
+      section += `SLA Average: ${sla.toFixed(2)}%\n\n`;
 
       // Down SLA (SLA = 0%)
-      if (batteryData.downSla.length > 0) {
-        section += `⚠️ SITE DENGAN SLA = 0% (DOWN) - Total: ${batteryData.downSla.length} site:\n`;
-        batteryData.downSla.forEach(site => {
-          section += `  • ${site.site} - ${site.downtime} - ${site.problem || ''}\n`;
+      // Filter: hanya tampilkan site dengan SLA <= 95% (biasanya downSla adalah 0%, tapi filter untuk konsistensi)
+      if (batteryData.downSla && batteryData.downSla.length > 0) {
+        const filteredDownSla = batteryData.downSla.filter(site => {
+          const sla = typeof site.sla === 'number' ? site.sla : 0;
+          return sla <= 95;
         });
-        section += `\n`;
+        
+        if (filteredDownSla.length > 0) {
+          section += `⚠️ SITE DENGAN SLA = 0% (DOWN) - Total: ${filteredDownSla.length} site:\n`;
+          filteredDownSla.forEach(site => {
+            // section += `  • ${site.site} - ${site.downtime || ''} - ${site.problem || ''}\n`;
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} - ${site.downtime || ''}${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Under SLA (< 95.5%)
-      if (batteryData.underSla.length > 0) {
-        section += `⚠️ SITE DENGAN SLA < 95.5% - Total: ${batteryData.underSla.length} site:\n`;
-        batteryData.underSla.forEach(site => {
-          section += `  • ${site.site} - ${site.sla.toFixed(2)}% (${site.downtime}) - ${site.problem || ''}\n`;
+      // Filter: hanya tampilkan site dengan SLA <= 95%
+      if (batteryData.underSla && batteryData.underSla.length > 0) {
+        const filteredUnderSla = batteryData.underSla.filter(site => {
+          const sla = typeof site.sla === 'number' ? site.sla : 0;
+          return sla <= 95;
         });
-        section += `\n`;
+        
+        if (filteredUnderSla.length > 0) {
+          section += `⚠️ SITE DENGAN SLA < 95.5% - Total: ${filteredUnderSla.length} site:\n`;
+          filteredUnderSla.forEach(site => {
+            const slaValue = typeof site.sla === 'number' ? site.sla.toFixed(2) : 'N/A';
+            // section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''}) - ${site.problem || ''}\n`;
+            // jika ada problem, gunakan '-' jika tidak, jangan ada '-'
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''})${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Drop SLA
-      if (batteryData.dropSla.length > 0) {
-        section += `📉 PENURUNAN SLA - Total: ${batteryData.dropSla.length} site:\n`;
-        batteryData.dropSla.forEach(site => {
-          section += `  • ${site.site} (${site.slaBefore.toFixed(2)}% → ${site.slaNow.toFixed(2)}%) - ${site.downtime} - ${site.problem || ''}\n`;
+      // Filter: hanya tampilkan site dengan slaNow <= 95%
+      if (batteryData.dropSla && batteryData.dropSla.length > 0) {
+        const filteredDropSla = batteryData.dropSla.filter(site => {
+          const slaNow = typeof site.slaNow === 'number' ? site.slaNow : 0;
+          return slaNow <= 95;
         });
-        section += `\n`;
+        
+        if (filteredDropSla.length > 0) {
+          section += `📉 PENURUNAN SLA - Total: ${filteredDropSla.length} site:\n`;
+          filteredDropSla.forEach(site => {
+            const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
+            const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
+            // section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''} - ${site.problem || ''}\n`;
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''}${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Up SLA
-      if (batteryData.upSla.length > 0) {
+      if (batteryData.upSla && batteryData.upSla.length > 0) {
         section += `📈 KENAIKAN SLA - Total: ${batteryData.upSla.length} site:\n`;
         batteryData.upSla.forEach(site => {
-          section += `  • ${site.site} (${site.slaBefore.toFixed(2)}% → ${site.slaNow.toFixed(2)}%)\n`;
+          const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
+          const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
+          section += `  • ${site.site} (${slaBefore}% → ${slaNow}%)\n`;
         });
         section += `\n`;
       }
@@ -94,25 +141,34 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
     };
 
     // Talis5 Full
-    reportText += formatBatterySection(
-      report.detail.batteryVersion.talis5,
-      report.detail.batteryVersion.talis5.name
-    );
-    reportText += `${'━'.repeat(42)}\n\n`;
+    const talis5Data = report.detail.batteryVersion?.talis5;
+    if (talis5Data) {
+      reportText += formatBatterySection(
+        talis5Data,
+        talis5Data.name || 'Talis5 Full'
+      );
+      reportText += `${'━'.repeat(42)}\n\n`;
+    }
 
     // Talis5 Mix
-    reportText += formatBatterySection(
-      report.detail.batteryVersion.mix,
-      report.detail.batteryVersion.mix.name
-    );
-    reportText += `${'━'.repeat(42)}\n\n`;
+    const mixData = report.detail.batteryVersion?.mix;
+    if (mixData) {
+      reportText += formatBatterySection(
+        mixData,
+        mixData.name || 'Talis5 Mix'
+      );
+      reportText += `${'━'.repeat(42)}\n\n`;
+    }
 
     // JSPro
-    reportText += formatBatterySection(
-      report.detail.batteryVersion.jspro,
-      report.detail.batteryVersion.jspro.name
-    );
-    reportText += `${'━'.repeat(42)}\n\n`;
+    const jsproData = report.detail.batteryVersion?.jspro;
+    if (jsproData) {
+      reportText += formatBatterySection(
+        jsproData,
+        jsproData.name || 'JS PRO'
+      );
+      reportText += `${'━'.repeat(42)}\n\n`;
+    }
 
     // Potensi SP Sites
     

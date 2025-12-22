@@ -1,5 +1,5 @@
 import Navbar from '@/components/layout/Navbar';
-import SLADataTable from '@/components/report/SLADataTable';
+import SLADataTable from './components/SLADataTable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Database } from 'lucide-react';
 
@@ -20,7 +20,7 @@ const MasterDataPage = () => {
                 SLA Master Data
               </h1>
               <p className="text-muted-foreground mt-1">
-                Tabel data SLA bulanan dengan filter dan pencarian lengkap
+                Tabel data SLA bulan <span className="font-bold">{new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}</span>
               </p>
             </div>
           </div>

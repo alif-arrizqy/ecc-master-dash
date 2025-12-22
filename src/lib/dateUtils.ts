@@ -167,13 +167,118 @@ export function getCurrentMonthPeriodIndonesian(): string {
  * - Contoh: sekarang 11 Desember → startDate = 2025-12-01, endDate = 2025-12-10
  */
 export function getPotensiSPDateRange(): { startDate: string; endDate: string } {
-  const now = new Date();
-  const start = startOfMonth(now); // Tanggal 1 bulan ini
-  const yesterday = subDays(now, 1); // 1 hari yang lalu
+  // const now = new Date();
+  // const start = startOfMonth(now); // Tanggal 1 bulan ini
+  // const yesterday = subDays(now, 1); // 1 hari yang lalu
   
-  return {
-    startDate: format(start, 'yyyy-MM-dd'),
-    endDate: format(yesterday, 'yyyy-MM-dd'),
-  };
+  // return {
+  //   startDate: format(start, 'yyyy-MM-dd'),
+  //   endDate: format(yesterday, 'yyyy-MM-dd'),
+  // };
+  const now = new Date();
+  const today = now.getDate();
+  
+  if (today === 1) {
+    // Tanggal 1: gunakan bulan sebelumnya
+    // startDate = tanggal 1 bulan sebelumnya
+    // endDate = tanggal terakhir bulan sebelumnya
+    const lastMonth = subMonths(now, 1);
+    const start = startOfMonth(lastMonth); // Tanggal 1 bulan sebelumnya
+    const end = endOfMonth(lastMonth); // Tanggal terakhir bulan sebelumnya
+    
+    return {
+      startDate: format(start, 'yyyy-MM-dd'),
+      endDate: format(end, 'yyyy-MM-dd'),
+    };
+  } else {
+    // Tanggal 2+: dari tanggal 1 bulan ini sampai tanggal terakhir bulan ini
+    const start = startOfMonth(now); // Tanggal 1 bulan ini
+    const end = endOfMonth(now); // Tanggal terakhir bulan ini
+    
+    return {
+      startDate: format(start, 'yyyy-MM-dd'),
+      endDate: format(end, 'yyyy-MM-dd'),
+    };
+  }
+}
+
+/**
+ * Get date range for Dashboard charts (daily chart all sites, daily chart per battery version,
+ * SLA reasons, weekly chart, and GAMAS history)
+ * Rules:
+ * - Normal (tanggal 2+): startDate = tanggal 1 bulan sekarang, endDate = tanggal terakhir bulan sekarang
+ *   Contoh: sekarang 2025-12-16 → startDate = 2025-12-01, endDate = 2025-12-31
+ * - Edge case (tanggal 1): startDate = tanggal 1 bulan sebelumnya, endDate = tanggal terakhir bulan sebelumnya
+ *   Contoh: sekarang 2025-12-01 → startDate = 2025-11-01, endDate = 2025-11-30
+ * 
+ * Used for:
+ * - /api/v1/sla-bakti/daily/chart/all-sites
+ * - /api/v1/sla-bakti/daily/chart/battery/{version}
+ * - /api/v1/sla-reason/battery-version/{version}
+ * - /api/v1/sla-bakti/weekly/chart/all-sites
+ * - /api/v1/history-gamas/
+ */
+export function getSLADashboardDateRange(): { startDate: string; endDate: string } {
+  const now = new Date();
+  const today = now.getDate();
+  
+  if (today === 1) {
+    // Tanggal 1: gunakan bulan sebelumnya
+    // startDate = tanggal 1 bulan sebelumnya
+    // endDate = tanggal terakhir bulan sebelumnya
+    const lastMonth = subMonths(now, 1);
+    const start = startOfMonth(lastMonth); // Tanggal 1 bulan sebelumnya
+    const end = endOfMonth(lastMonth); // Tanggal terakhir bulan sebelumnya
+    
+    return {
+      startDate: format(start, 'yyyy-MM-dd'),
+      endDate: format(end, 'yyyy-MM-dd'),
+    };
+  } else {
+    // Tanggal 2+: dari tanggal 1 bulan ini sampai tanggal terakhir bulan ini
+    const start = startOfMonth(now); // Tanggal 1 bulan ini
+    const end = endOfMonth(now); // Tanggal terakhir bulan ini
+    
+    return {
+      startDate: format(start, 'yyyy-MM-dd'),
+      endDate: format(end, 'yyyy-MM-dd'),
+    };
+  }
+}
+
+/**
+ * Get date range for Problem data
+ * Rules:
+ * - Normal (tanggal 2+): startDate = tanggal 1 bulan sekarang, endDate = tanggal terakhir bulan sekarang
+ *   Contoh: sekarang 2025-12-16 → startDate = 2025-12-01, endDate = 2025-12-31
+ * - Edge case (tanggal 1): startDate = tanggal 1 bulan sebelumnya, endDate = tanggal terakhir bulan sebelumnya
+ *   Contoh: sekarang 2025-12-01 → startDate = 2025-11-01, endDate = 2025-11-30
+ */
+export function getProblemDateRange(): { startDate: string; endDate: string } {
+  const now = new Date();
+  const today = now.getDate();
+  
+  if (today === 1) {
+    // Tanggal 1: gunakan bulan sebelumnya
+    // startDate = tanggal 1 bulan sebelumnya
+    // endDate = tanggal terakhir bulan sebelumnya
+    const lastMonth = subMonths(now, 1);
+    const start = startOfMonth(lastMonth); // Tanggal 1 bulan sebelumnya
+    const end = endOfMonth(lastMonth); // Tanggal terakhir bulan sebelumnya
+    
+    return {
+      startDate: format(start, 'yyyy-MM-dd'),
+      endDate: format(end, 'yyyy-MM-dd'),
+    };
+  } else {
+    // Tanggal 2+: dari tanggal 1 bulan ini sampai tanggal terakhir bulan ini
+    const start = startOfMonth(now); // Tanggal 1 bulan ini
+    const end = endOfMonth(now); // Tanggal terakhir bulan ini
+    
+    return {
+      startDate: format(start, 'yyyy-MM-dd'),
+      endDate: format(end, 'yyyy-MM-dd'),
+    };
+  }
 }
 
