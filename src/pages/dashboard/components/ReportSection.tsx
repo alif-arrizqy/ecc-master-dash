@@ -316,16 +316,61 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
   const handleCopy = async () => {
     const reportText = generateReportText();
     
+    // Cek apakah clipboard API tersedia dan secure context
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(reportText);
+        setCopied(true);
+        toast.success('Laporan berhasil disalin!', {
+          description: 'Anda dapat paste laporan ini'
+        });
+        
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Clipboard API error:', err);
+        // Fallback ke metode lama
+        fallbackCopyTextToClipboard(reportText);
+      }
+    } else {
+      // Gunakan fallback method
+      fallbackCopyTextToClipboard(reportText);
+    }
+  };
+
+  // Fallback method untuk browser yang tidak support clipboard API
+  const fallbackCopyTextToClipboard = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    
+    // Hindari scroll ke textarea
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    textArea.style.pointerEvents = 'none';
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
     try {
-      await navigator.clipboard.writeText(reportText);
-      setCopied(true);
-      toast.success('Laporan berhasil disalin!', {
-        description: 'Anda dapat paste laporan ini'
-      });
-      
-      setTimeout(() => setCopied(false), 2000);
+      const successful = document.execCommand('copy');
+      if (successful) {
+        setCopied(true);
+        toast.success('Laporan berhasil disalin!', {
+          description: 'Anda dapat paste laporan ini'
+        });
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        throw new Error('execCommand failed');
+      }
     } catch (err) {
-      toast.error('Gagal menyalin laporan');
+      console.error('Fallback copy error:', err);
+      toast.error('Gagal menyalin laporan', {
+        description: 'Mohon salin manual dari teks di bawah ini'
+      });
+    } finally {
+      document.body.removeChild(textArea);
     }
   };
   
