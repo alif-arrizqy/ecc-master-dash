@@ -313,65 +313,153 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
     return reportText;
   };
   
-  const handleCopy = async () => {
-    const reportText = generateReportText();
+  // Helper: Menampilkan success notification dan update state
+  const showCopySuccess = (method: string) => {
+    console.log(`✅ Berhasil menyalin laporan menggunakan metode: ${method}`);
+    setCopied(true);
+    toast.success('Laporan berhasil disalin!', {
+      description: 'Anda dapat paste laporan ini'
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Helper: Membuat hidden textarea untuk copy
+  const createHiddenTextarea = (text: string): HTMLTextAreaElement => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.setAttribute('aria-hidden', 'true');
     
-    // Cek apakah clipboard API tersedia dan secure context
-    if (navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(reportText);
-        setCopied(true);
-        toast.success('Laporan berhasil disalin!', {
-          description: 'Anda dapat paste laporan ini'
-        });
-        
-        setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-        console.error('Clipboard API error:', err);
-        // Fallback ke metode lama
-        fallbackCopyTextToClipboard(reportText);
-      }
+    Object.assign(textArea.style, {
+      position: 'fixed',
+      top: '-9999px',
+      left: '-9999px',
+      opacity: '0',
+      pointerEvents: 'none',
+    });
+    
+    return textArea;
+  };
+
+  // Helper: Select text dengan kompatibilitas iOS
+  const selectText = (textArea: HTMLTextAreaElement) => {
+    const isIOS = /ipad|iphone/i.test(navigator.userAgent);
+    
+    if (isIOS) {
+      const range = document.createRange();
+      range.selectNodeContents(textArea);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      textArea.setSelectionRange(0, 999999);
     } else {
-      // Gunakan fallback method
-      fallbackCopyTextToClipboard(reportText);
+      textArea.select();
+      textArea.setSelectionRange(0, 999999);
     }
   };
 
-  // Fallback method untuk browser yang tidak support clipboard API
-  const fallbackCopyTextToClipboard = (text: string) => {
+  // Helper: Copy menggunakan Clipboard API (HTTPS)
+  const copyWithClipboardAPI = async (text: string): Promise<boolean> => {
+    if (!navigator.clipboard || !window.isSecureContext) {
+      console.log('⚠️ Clipboard API tidak tersedia (tidak secure context atau browser tidak support)');
+      return false;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      console.log('✅ Clipboard API berhasil menyalin teks');
+      return true;
+    } catch (err) {
+      console.error('❌ Clipboard API error:', err);
+      return false;
+    }
+  };
+
+  // Helper: Copy menggunakan execCommand (HTTP fallback)
+  const copyWithExecCommand = (text: string): boolean => {
+    const textArea = createHiddenTextarea(text);
+    document.body.appendChild(textArea);
+    
+    try {
+      selectText(textArea);
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        console.log('✅ execCommand berhasil menyalin teks');
+      } else {
+        console.warn('⚠️ execCommand mengembalikan false');
+      }
+      return successful;
+    } catch (err) {
+      document.body.removeChild(textArea);
+      console.error('❌ execCommand error:', err);
+      return false;
+    }
+  };
+
+  // Helper: Fallback manual - tampilkan textarea untuk user copy manual
+  const showManualCopyFallback = (text: string) => {
     const textArea = document.createElement('textarea');
     textArea.value = text;
     
-    // Hindari scroll ke textarea
-    textArea.style.top = '0';
-    textArea.style.left = '0';
-    textArea.style.position = 'fixed';
-    textArea.style.opacity = '0';
-    textArea.style.pointerEvents = 'none';
+    Object.assign(textArea.style, {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: '80%',
+      height: '200px',
+      zIndex: '9999',
+      border: '2px solid #ccc',
+      padding: '10px',
+      fontSize: '14px',
+      backgroundColor: '#fff',
+    });
     
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
     
-    try {
-      const successful = document.execCommand('copy');
-      if (successful) {
-        setCopied(true);
-        toast.success('Laporan berhasil disalin!', {
-          description: 'Anda dapat paste laporan ini'
-        });
-        setTimeout(() => setCopied(false), 2000);
-      } else {
-        throw new Error('execCommand failed');
+    toast.error('Salin manual diperlukan', {
+      description: 'Teks telah dipilih, tekan Ctrl+C (Cmd+C di Mac) untuk menyalin',
+      duration: 5000
+    });
+    
+    setTimeout(() => {
+      if (document.body.contains(textArea)) {
+        document.body.removeChild(textArea);
       }
-    } catch (err) {
-      console.error('Fallback copy error:', err);
-      toast.error('Gagal menyalin laporan', {
-        description: 'Mohon salin manual dari teks di bawah ini'
-      });
-    } finally {
-      document.body.removeChild(textArea);
+    }, 5000);
+  };
+
+  // Main handler: Mencoba berbagai metode copy secara berurutan
+  const handleCopy = async () => {
+    const reportText = generateReportText();
+    console.log('📋 Memulai proses menyalin laporan...', {
+      textLength: reportText.length,
+      isSecureContext: window.isSecureContext,
+      clipboardAvailable: !!navigator.clipboard
+    });
+    
+    // Method 1: Clipboard API (HTTPS)
+    if (await copyWithClipboardAPI(reportText)) {
+      showCopySuccess('Clipboard API');
+      return;
     }
+    
+    // Method 2: execCommand (HTTP fallback)
+    if (copyWithExecCommand(reportText)) {
+      showCopySuccess('execCommand');
+      return;
+    }
+    
+    // Method 3: Manual fallback
+    console.error('❌ Semua metode copy gagal, menggunakan fallback manual');
+    showManualCopyFallback(reportText);
+    toast.error('Gagal menyalin laporan', {
+      description: 'Mohon salin manual dari teks di bawah ini'
+    });
   };
   
   return (
