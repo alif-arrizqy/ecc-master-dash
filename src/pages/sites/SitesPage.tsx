@@ -13,11 +13,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -57,24 +57,20 @@ const SitesPage = () => {
   const [sccTypeFilter, setSccTypeFilter] = useState<string>('all');
   const [batteryVersionFilter, setBatteryVersionFilter] = useState<string>('all');
   const [provinceFilter, setProvinceFilter] = useState<string>('all');
+  const [isActiveFilter, setIsActiveFilter] = useState<string>('true'); // Default hanya aktif
   const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteAction, setDeleteAction] = useState<'delete' | 'activate' | 'deactivate'>('delete');
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [viewingDetails, setViewingDetails] = useState<Site | null>(null);
   const [formData, setFormData] = useState<SiteFormData>({
     siteId: '',
     siteName: '',
-    ipSnmp: '',
-    sccType: '',
-    batteryVersion: '',
-    totalBattery: undefined,
-    statusSites: '',
-    webappUrl: '',
+    isActive: true,
     detail: {
       province: '',
-      talisInstalled: '',
     },
   });
 
@@ -109,6 +105,11 @@ const SitesPage = () => {
     queryParams.province = provinceFilter.toLowerCase();
   }
 
+  // Add isActive filter (default true - hanya aktif)
+  if (isActiveFilter !== 'all') {
+    queryParams.isActive = isActiveFilter === 'true';
+  }
+
   // Data fetching
   const { data, isLoading, error } = useSitesQuery(queryParams);
   const { data: statisticsData, isLoading: isLoadingStats, error: statisticsError } = useSiteStatistics();
@@ -116,20 +117,61 @@ const SitesPage = () => {
   const updateMutation = useUpdateSite();
   const deleteMutation = useDeleteSite();
 
+  // Helper function to map Site to SiteFormData
+  const mapSiteToFormData = (site: Site): SiteFormData => {
+    return {
+      prCode: site.prCode || '',
+      siteId: site.siteId,
+      clusterId: site.clusterId || '',
+      terminalId: site.terminalId || '',
+      siteName: site.siteName,
+      ipSnmp: site.ipSnmp || '',
+      ipMiniPc: site.ipMiniPc || '',
+      webappUrl: site.webappUrl || '',
+      ehubVersion: site.ehubVersion || '',
+      panel2Type: site.panel2Type || '',
+      sccType: site.sccType || '',
+      batteryVersion: site.batteryVersion || '',
+      totalBattery: site.totalBattery,
+      statusSites: site.statusSites || '',
+      isActive: site.isActive ?? true,
+      detail: {
+        village: site.detail?.village || '',
+        subdistrict: site.detail?.subdistrict || '',
+        regency: site.detail?.regency || '',
+        province: site.detail?.province || '',
+        longitude: site.detail?.longitude ? parseFloat(String(site.detail.longitude)) : undefined,
+        latitude: site.detail?.latitude ? parseFloat(String(site.detail.latitude)) : undefined,
+        ipGatewayGs: site.detail?.ipGatewayGs || '',
+        ipGatewayLc: site.detail?.ipGatewayLc || '',
+        subnet: site.detail?.subnet || '',
+        batteryList: (site.detail?.batteryList || []) as string[],
+        cabinetList: (site.detail?.cabinetList || []) as string[],
+        buildYear: site.detail?.buildYear || '',
+        projectPhase: site.detail?.projectPhase || '',
+        onairDate: site.detail?.onairDate || '',
+        gsSustainDate: site.detail?.gsSustainDate || '',
+        topoSustainDate: site.detail?.topoSustainDate || '',
+        talisInstalled: site.detail?.talisInstalled || '',
+        providerGs: site.detail?.providerGs || '',
+        beamProvider: site.detail?.beamProvider || '',
+        cellularOperator: site.detail?.cellularOperator || '',
+        contactPerson: (site.detail?.contactPerson || []).map((cp) => ({
+          name: cp.name || '',
+          phone: cp.phone || '',
+        })),
+      },
+    };
+  };
+
   // Handlers
   const resetForm = () => {
     setFormData({
       siteId: '',
       siteName: '',
-      ipSnmp: '',
-      sccType: '',
-      batteryVersion: '',
-      totalBattery: undefined,
-      statusSites: '',
-      webappUrl: '',
+      isActive: true,
       detail: {
         province: '',
-        talisInstalled: '',
       },
     });
     setEditingId(null);
@@ -138,25 +180,18 @@ const SitesPage = () => {
 
   const handleEdit = (site: Site) => {
     setEditingId(site.siteId);
-    setFormData({
-      siteId: site.siteId,
-      siteName: site.siteName,
-      ipSnmp: site.ipSnmp || '',
-      sccType: site.sccType || '',
-      batteryVersion: site.batteryVersion || '',
-      totalBattery: site.totalBattery,
-      statusSites: site.statusSites || '',
-      webappUrl: site.webappUrl || '',
-      detail: {
-        province: site.detail?.province || '',
-        talisInstalled: site.detail?.talisInstalled || '',
-      },
-    });
+    setFormData(mapSiteToFormData(site));
     setIsDialogOpen(true);
   };
 
   const handleDelete = (site: Site) => {
     setSelectedSite(site);
+    // Set default action berdasarkan status site
+    if (site.isActive) {
+      setDeleteAction('deactivate'); // Default untuk site aktif adalah deactivate
+    } else {
+      setDeleteAction('activate'); // Default untuk site nonaktif adalah activate
+    }
     setIsDeleteDialogOpen(true);
   };
 
@@ -187,12 +222,33 @@ const SitesPage = () => {
   };
 
   const handleConfirmDelete = () => {
-    if (selectedSite) {
-      deleteMutation.mutate(selectedSite.siteId, {
-        onSuccess: () => {
-          setIsDeleteDialogOpen(false);
+    if (!selectedSite) return;
+
+    if (deleteAction === 'delete') {
+      // Hard delete
+      deleteMutation.mutate(
+        { id: selectedSite.siteId, hard: true },
+        {
+          onSuccess: () => {
+            setIsDeleteDialogOpen(false);
+            setSelectedSite(null);
+          },
+        }
+      );
+    } else if (deleteAction === 'activate' || deleteAction === 'deactivate') {
+      // Update isActive status
+      updateMutation.mutate(
+        {
+          id: selectedSite.siteId,
+          data: { isActive: deleteAction === 'activate' },
         },
-      });
+        {
+          onSuccess: () => {
+            setIsDeleteDialogOpen(false);
+            setSelectedSite(null);
+          },
+        }
+      );
     }
   };
 
@@ -217,6 +273,9 @@ const SitesPage = () => {
         break;
       case 'province':
         setProvinceFilter(value);
+        break;
+      case 'isActive':
+        setIsActiveFilter(value);
         break;
     }
   };
@@ -262,7 +321,7 @@ const SitesPage = () => {
                   Tambah Site
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingId ? 'Edit' : 'Tambah'} Site</DialogTitle>
                   <DialogDescription>Masukkan detail site</DialogDescription>
@@ -272,18 +331,31 @@ const SitesPage = () => {
                   editingId={editingId}
                   isSubmitting={createMutation.isPending || updateMutation.isPending}
                   onChange={setFormData}
+                  onCancel={() => {
+                    setIsDialogOpen(false);
+                    resetForm();
+                  }}
+                  onSubmit={(data) => {
+                    if (editingId) {
+                      updateMutation.mutate(
+                        { id: editingId, data },
+                        {
+                          onSuccess: () => {
+                            setIsDialogOpen(false);
+                            resetForm();
+                          },
+                        }
+                      );
+                    } else {
+                      createMutation.mutate(data, {
+                        onSuccess: () => {
+                          setIsDialogOpen(false);
+                          resetForm();
+                        },
+                      });
+                    }
+                  }}
                 />
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Batal
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                  >
-                    {editingId ? 'Update' : 'Simpan'}
-                  </Button>
-                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
@@ -305,11 +377,13 @@ const SitesPage = () => {
           sccTypeFilter={sccTypeFilter}
           batteryVersionFilter={batteryVersionFilter}
           provinceFilter={provinceFilter}
+          isActiveFilter={isActiveFilter}
           onSearchChange={(value) => handleFilterChange('search', value)}
           onStatusChange={(value) => handleFilterChange('status', value)}
           onSccTypeChange={(value) => handleFilterChange('sccType', value)}
           onBatteryVersionChange={(value) => handleFilterChange('batteryVersion', value)}
           onProvinceChange={(value) => handleFilterChange('province', value)}
+          onIsActiveChange={(value) => handleFilterChange('isActive', value)}
         />
 
         {/* Data Table */}
@@ -379,23 +453,72 @@ const SitesPage = () => {
         onOpenChange={(open) => !open && setViewingDetails(null)}
       />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete/Activate/Deactivate Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Site</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteAction === 'delete'
+                ? 'Hapus Permanen Site'
+                : deleteAction === 'activate'
+                  ? 'Aktifkan Site'
+                  : 'Nonaktifkan Site'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus site "{selectedSite?.siteName}" (
-              {selectedSite?.siteId})? Tindakan ini tidak dapat dibatalkan.
+              {deleteAction === 'delete' ? (
+                <>
+                  Apakah Anda yakin ingin menghapus permanen site "{selectedSite?.siteName}" (
+                  {selectedSite?.siteId})? Tindakan ini tidak dapat dibatalkan.
+                </>
+              ) : deleteAction === 'activate' ? (
+                <>
+                  Apakah Anda yakin ingin mengaktifkan site "{selectedSite?.siteName}" (
+                  {selectedSite?.siteId})?
+                </>
+              ) : (
+                <>
+                  Apakah Anda yakin ingin menonaktifkan site "{selectedSite?.siteName}" (
+                  {selectedSite?.siteId})?
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-4">
+            <Label className="mb-2 block">Pilih Aksi:</Label>
+            <Select value={deleteAction} onValueChange={(value) => setDeleteAction(value as typeof deleteAction)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedSite?.isActive ? (
+                  <>
+                    <SelectItem value="deactivate">Nonaktifkan Site</SelectItem>
+                    <SelectItem value="delete">Hapus Permanen</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="activate">Aktifkan Site</SelectItem>
+                    <SelectItem value="delete">Hapus Permanen</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={
+                deleteAction === 'delete'
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : ''
+              }
             >
-              Hapus
+              {deleteAction === 'delete'
+                ? 'Hapus Permanen'
+                : deleteAction === 'activate'
+                  ? 'Aktifkan'
+                  : 'Nonaktifkan'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

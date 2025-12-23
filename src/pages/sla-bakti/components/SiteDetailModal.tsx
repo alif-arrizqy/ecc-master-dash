@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { X, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Site, Problem } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, eachDayOfInterval } from 'date-fns';
 
 interface SiteDetailModalProps {
   site: Site;
@@ -14,6 +14,31 @@ interface SiteDetailModalProps {
 
 const SiteDetailModal = ({ site, problems, onClose }: SiteDetailModalProps) => {
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+
+  // Determine the month to use for date labels (same logic as getSLADateRange)
+  const monthDates = useMemo(() => {
+    const now = new Date();
+    const today = now.getDate();
+    
+    let targetMonth: Date;
+    if (today === 1) {
+      // Tanggal 1: gunakan bulan sebelumnya
+      targetMonth = subMonths(now, 1);
+    } else {
+      // Tanggal 2+: gunakan bulan saat ini
+      targetMonth = now;
+    }
+    
+    const start = startOfMonth(targetMonth);
+    const end = endOfMonth(targetMonth);
+    return eachDayOfInterval({ start, end });
+  }, []);
+
+  // Map day number to date
+  const getDateForDay = (day: number): Date | null => {
+    if (day < 1 || day > monthDates.length) return null;
+    return monthDates[day - 1];
+  };
 
   const getSLAColor = (sla: number) => {
     if (sla >= 95.5) return 'text-status-good';
@@ -115,43 +140,63 @@ const SiteDetailModal = ({ site, problems, onClose }: SiteDetailModalProps) => {
               <div className="relative px-2">
                 {/* Tooltip Display - Fixed Position */}
                 <div className="h-8 mb-2 flex items-center justify-center">
-                  {hoveredDay !== null && (
-                    <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-md font-medium animate-fade-in">
-                      Day {hoveredDay}: {site.dailySla.find(d => d.day === hoveredDay)?.sla.toFixed(1)}%
-                    </div>
-                  )}
+                  {hoveredDay !== null && (() => {
+                    const date = getDateForDay(hoveredDay);
+                    const dayData = site.dailySla.find(d => d.day === hoveredDay);
+                    const sla = dayData?.sla;
+                    const hasData = dayData !== undefined;
+                    return (
+                      <div className="bg-foreground text-background text-xs px-3 py-1.5 rounded-md font-medium animate-fade-in">
+                        {date ? format(date, 'dd MMM') : `Day ${hoveredDay}`}: {hasData ? `${sla?.toFixed(1)}%` : 'No data'}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Bars */}
                 <div className="flex gap-[2px] h-20 items-end">
-                  {site.dailySla.map((day) => (
-                    <div
-                      key={day.day}
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onMouseEnter={() => setHoveredDay(day.day)}
-                      onMouseLeave={() => setHoveredDay(null)}
-                    >
+                  {monthDates.map((date, index) => {
+                    const day = index + 1;
+                    const dayData = site.dailySla.find(d => d.day === day);
+                    const sla = dayData?.sla ?? 0;
+                    const hasData = dayData !== undefined;
+                    
+                    return (
                       <div
-                        className={cn(
-                          "w-full rounded-t transition-all duration-150",
-                          hoveredDay === day.day ? 'opacity-100 scale-x-110' : 'opacity-80 hover:opacity-100',
-                          day.sla >= 95.5 ? 'bg-status-good' : day.sla >= 90 ? 'bg-status-warning' : 'bg-status-danger'
-                        )}
-                        style={{ height: `${Math.max(8, (day.sla - 70) * 2.5)}px` }}
-                      />
-                    </div>
-                  ))}
+                        key={day}
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onMouseEnter={() => setHoveredDay(day)}
+                        onMouseLeave={() => setHoveredDay(null)}
+                      >
+                        <div
+                          className={cn(
+                            "w-full rounded-t transition-all duration-150",
+                            hoveredDay === day ? 'opacity-100 scale-x-110' : 'opacity-80 hover:opacity-100',
+                            !hasData ? 'bg-muted/30' : sla >= 95.5 ? 'bg-status-good' : sla >= 90 ? 'bg-status-warning' : 'bg-status-danger'
+                          )}
+                          style={{ 
+                            height: hasData 
+                              ? `${Math.max(8, (sla - 70) * 2.5)}px` 
+                              : '2px'
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* X-axis Labels */}
-                <div className="flex justify-between mt-2 text-xs text-muted-foreground px-1">
-                  <span>1</span>
-                  <span>5</span>
-                  <span>10</span>
-                  <span>15</span>
-                  <span>20</span>
-                  <span>25</span>
-                  <span>31</span>
+                <div className="flex gap-[2px] mt-2 text-xs text-muted-foreground px-1">
+                  {monthDates.map((date, index) => {
+                    const day = index + 1;
+                    return (
+                      <div key={day} className="flex-1 min-w-0 text-center">
+                        <span className="text-[10px]">
+                          {format(date, 'd')}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
