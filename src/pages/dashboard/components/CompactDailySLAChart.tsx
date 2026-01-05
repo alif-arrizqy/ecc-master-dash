@@ -46,6 +46,41 @@ const CustomLabel = (props: { x?: number | string; y?: number | string; value?: 
 const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDailySLAChartProps) => {
   const lineColor = variantColors[variant];
   
+  // Get the last day of the month from data
+  const getLastDayOfMonth = (): number => {
+    if (data.length === 0) return 31;
+    
+    // Try to get from date field
+    const firstItemWithDate = data.find(d => d.date);
+    if (firstItemWithDate?.date) {
+      try {
+        const date = new Date(firstItemWithDate.date);
+        if (!isNaN(date.getTime())) {
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          return new Date(year, month + 1, 0).getDate();
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    
+    // Fallback: use max day from data
+    const maxDay = Math.max(...data.map(d => d.day));
+    return maxDay > 0 ? maxDay : 31;
+  };
+  
+  const lastDayOfMonth = getLastDayOfMonth();
+  
+  // Generate X axis ticks for all days in month (1, 2, 3, ... lastDayOfMonth)
+  const xAxisTicks = Array.from({ length: lastDayOfMonth }, (_, i) => i + 1);
+  
+  // Add formatted date field to data (for tooltip)
+  const formattedData = data.map(item => ({
+    ...item,
+    displayDate: item.date || item.day.toString()
+  }));
+  
   // Calculate dynamic Y axis domain
   const minSLA = Math.min(...data.map(d => d.sla));
   const minYAxis = Math.max(0, Math.floor(minSLA - 20)); // Kurangi 20, bulatkan ke bawah, minimum 0
@@ -96,7 +131,7 @@ const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDaily
       <h3 className="text-sm font-semibold text-foreground mb-2">{title}</h3>
       <div className="h-36">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 15, right: 5, left: -15, bottom: 0 }}>
+          <LineChart data={formattedData} margin={{ top: 15, right: 5, left: -15, bottom: 0 }}>
             <CartesianGrid 
               strokeDasharray="3 3" 
               stroke="hsl(var(--chart-grid))" 
@@ -104,10 +139,13 @@ const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDaily
             />
             <XAxis 
               dataKey="day" 
+              type="number"
+              domain={[1, lastDayOfMonth]}
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
               tickLine={false}
               axisLine={{ stroke: 'hsl(var(--border))' }}
-              interval={0}
+              ticks={xAxisTicks}
+              allowDecimals={false}
             />
             <YAxis 
               domain={[minYAxis, maxYAxis]}
@@ -122,9 +160,20 @@ const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDaily
                 backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
                 borderRadius: '6px',
-                fontSize: '11px'
+                fontSize: '12px'
               }}
-              labelFormatter={(value) => `Tanggal ${value}`}
+              labelFormatter={(value) => {
+                const item = formattedData.find(d => d.day === value);
+                if (item?.date) {
+                  const date = new Date(item.date);
+                  return date.toLocaleDateString('id-ID', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  });
+                }
+                return `Tanggal ${value}`;
+              }}
               formatter={(value: number) => [`${value.toFixed(1)}%`, 'SLA']}
               wrapperStyle={{ zIndex: 100 }}
             />
@@ -143,7 +192,7 @@ const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDaily
             >
               <LabelList 
                 dataKey="sla" 
-                content={(props) => <CustomLabel {...props} dataLength={data.length} />}
+                content={(props) => <CustomLabel {...props} dataLength={formattedData.length} />}
               />
             </Line>
           </LineChart>
