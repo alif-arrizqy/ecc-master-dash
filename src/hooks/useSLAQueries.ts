@@ -26,6 +26,7 @@ function transformChartData(apiData: DailySLAChartData[]): DailySLA[] {
     const day = parseInt(item.date.split('-')[2], 10);
     return {
       day,
+      date: item.date, // Keep the full date for formatting
       sla: item.value,
     };
   });
@@ -144,7 +145,7 @@ export function useSLAReportDetail(
 ) {
   return useQuery<SLAReportDetail, Error>({
     queryKey: ['slaReportDetail', params.startDate, params.endDate],
-    queryFn: () => slaApi.getSLAReportDetail(params),
+    queryFn: async () => slaApi.getSLAReportDetail(params) as unknown as SLAReportDetail,
     ...options,
   });
 }
@@ -164,7 +165,7 @@ export function usePotensiSPSites(
 ) {
   return useQuery<PotensiSPSitesResponse, Error>({
     queryKey: ['potensiSPSites', params.startDate, params.endDate, params.statusSP, params.page, params.limit],
-    queryFn: () => slaApi.getPotensiSPSites(params),
+    queryFn: async () => slaApi.getPotensiSPSites(params) as unknown as PotensiSPSitesResponse,
     ...options,
   });
 }
