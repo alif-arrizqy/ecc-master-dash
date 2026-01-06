@@ -359,7 +359,7 @@ export const slaApi = {
    */
   getSLAReasonsByBatteryVersion: async (
     batteryVersion: BatteryVersion,
-    params?: { startDate?: string; endDate?: string }
+    params?: { startDate?: string; endDate?: string; period?: string }
   ) => {
     return fetchSlaApi<Array<{
       id: number;
@@ -370,6 +370,7 @@ export const slaApi = {
       params: {
         startDate: params?.startDate,
         endDate: params?.endDate,
+        period: params?.period,
       },
     });
   },
@@ -881,6 +882,7 @@ export const slaApi = {
   createSLAReasonBatteryVersion: async (data: {
     batteryVersion: BatteryVersion;
     reasonId: number;
+    period?: string; // Optional: format YYYY-MM, defaults to current month
   }) => {
     const response = await slaApiClient.post<ApiResponse<unknown>>('/api/v1/sla-reason/battery-version', data);
     return response.data.data;
