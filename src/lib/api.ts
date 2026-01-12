@@ -6,16 +6,16 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 
 // Get environment variables with fallback defaults for development
-const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL || 'http://localhost:3002';
-const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL || 'http://localhost:3001';
-const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL || 'http://localhost:3003';
+const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL;
+const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL;
+const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
-  console.warn('VITE_SLA_SERVICES_URL is not set. Using default: http://localhost:3002');
+  console.warn('VITE_SLA_SERVICES_URL is not set.');
 }
 
 if (!import.meta.env.VITE_SITES_SERVICES_URL) {
-  console.warn('VITE_SITES_SERVICES_URL is not set. Using default: http://localhost:3001');
+  console.warn('VITE_SITES_SERVICES_URL is not set.');
 }
 
 export type BatteryVersion = 'talis5' | 'mix' | 'jspro';
