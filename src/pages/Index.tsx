@@ -5,6 +5,7 @@ import CompactDailySLAChart from './dashboard/components/CompactDailySLAChart';
 import SLACausesTable from './dashboard/components/SLACausesTable';
 import GAMASHistoryCard from './dashboard/components/GAMASHistoryCard';
 import ReportSection from './dashboard/components/ReportSection';
+import PotensiSPSection from './dashboard/components/SlaBelow95';
 import { Loading } from '@/components/ui/loading';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -16,11 +17,10 @@ import {
   useSLAReasons,
   useGAMASHistory,
   useSLAReportDetail,
-  usePotensiSPSites,
 } from '@/hooks/useSLAQueries';
-import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getPotensiSPDateRange, getSLADashboardDateRange } from '@/lib/dateUtils';
+import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getSLADashboardDateRange } from '@/lib/dateUtils';
 import WeeklyTrendChart from './dashboard/components/WeeklyTrendChart';
-import { SLAReportDetail, PotensiSPSitesResponse } from '@/types/api';
+import { SLAReportDetail } from '@/types/api';
 
 const Index = () => {
   // Get date range for dashboard charts (daily charts, SLA reasons, weekly chart, GAMAS history)
@@ -103,19 +103,8 @@ const Index = () => {
   const reportDetail = reportDetailQuery.data as SLAReportDetail | undefined;
   const isLoadingReport = reportDetailQuery.isLoading;
 
-  // Fetch Potensi SP sites
-  const potensiSPDateRange = getPotensiSPDateRange();
-  const potensiSPQuery = usePotensiSPSites({ 
-    startDate: potensiSPDateRange.startDate, 
-    endDate: potensiSPDateRange.endDate,
-    statusSP: 'Potensi SP',
-    limit: 100
-  });
-  const potensiSPData = potensiSPQuery.data as PotensiSPSitesResponse | undefined;
-  const isLoadingPotensiSP = potensiSPQuery.isLoading;
-  
-  // Type-safe extraction of sites array
-  const potensiSPSites = potensiSPData?.sites || [];
+  // Extract slaBelow95 data from reportDetail (already included in daily report response)
+  const slaBelow95Data = reportDetail?.slaBelow95;
 
   // Combine SLA reasons
   const slaCauses = [
@@ -243,17 +232,29 @@ const Index = () => {
               </div>
             </section>
             
-            {/* Report Section */}
+            {/* Report Section and Potensi SP Section */}
             <section className="mb-6">
-              {isLoadingReport || isLoadingPotensiSP ? (
-                <Loading text="Memuat laporan detail..." />
-              ) : (
-                <ReportSection 
-                  reportData={reportDetail}
-                  gamasHistory={gamasHistory}
-                  potensiSPSites={potensiSPSites}
-                />
-              )}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Laporan Ringkas */}
+                <div>
+                  {isLoadingReport ? (
+                    <Loading text="Memuat laporan detail..." />
+                  ) : (
+                    <ReportSection 
+                      reportData={reportDetail}
+                      gamasHistory={gamasHistory}
+                    />
+                  )}
+                </div>
+                
+                {/* SLA Below 95.5% Section */}
+                <div>
+                  <PotensiSPSection
+                    slaBelow95Data={slaBelow95Data}
+                    isLoading={isLoadingReport}
+                  />
+                </div>
+              </div>
             </section>
           </>
         )}

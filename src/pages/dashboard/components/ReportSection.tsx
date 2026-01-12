@@ -3,8 +3,7 @@ import { Copy, Check, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { SLAReportDetail, SiteMaster } from '@/types/api';
+import { SLAReportDetail } from '@/types/api';
 
 interface GAMASHistoryItem {
   date: string;
@@ -15,10 +14,9 @@ interface GAMASHistoryItem {
 interface ReportSectionProps {
   reportData?: SLAReportDetail;
   gamasHistory?: GAMASHistoryItem[];
-  potensiSPSites?: SiteMaster[];
 }
 
-const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: ReportSectionProps) => {
+const ReportSection = ({ reportData, gamasHistory = [] }: ReportSectionProps) => {
   const [copied, setCopied] = useState(false);
   
   const formatDate = (dateString: string): string => {
@@ -38,11 +36,11 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
     const dateNow = formatDate(report.dateNow);
     const dateBefore = formatDate(report.dateBefore);
     
-    let reportText = `📊 LAPORAN SLA SUNDAYA - ${dateNow}\n\n`;
+    let reportText = `LAPORAN SLA SUNDAYA - ${dateNow}\n\n`;
     reportText += `${report.message}\n`;
     reportText += `${dateBefore} = ${report.slaBefore.toFixed(2)}%\n`;
     reportText += `${dateNow} = ${report.slaNow.toFixed(2)}%\n\n`;
-    reportText += `${'━'.repeat(42)}\n\n`;
+    reportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
 
     // Helper function to format battery version section
@@ -52,83 +50,55 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
     ) => {
       // Add null/undefined checks
       if (!batteryData || !batteryData.summary) {
-        return `📈 ${batteryName.toUpperCase()} - Data tidak tersedia\n\n`;
+        return `*${batteryName.toUpperCase()}* - Data tidak tersedia\n\n`;
       }
 
       const totalSites = batteryData.summary.totalSites || 0;
       const sla = batteryData.summary.sla || 0;
       const message = batteryData.message || '';
 
-      let section = `📈 ${batteryName.toUpperCase()} (${totalSites} Site)\n`;
+      let section = `*${batteryName.toUpperCase()} (${totalSites} Site)*\n`;
       if (message) {
         section += `${message}\n`;
       }
       section += `SLA Average: ${sla.toFixed(2)}%\n\n`;
 
       // Down SLA (SLA = 0%)
-      // Filter: hanya tampilkan site dengan SLA <= 95% (biasanya downSla adalah 0%, tapi filter untuk konsistensi)
       if (batteryData.downSla && batteryData.downSla.length > 0) {
-        const filteredDownSla = batteryData.downSla.filter(site => {
-          const sla = typeof site.sla === 'number' ? site.sla : 0;
-          return sla <= 95;
+        section += `*SITE DENGAN SLA = 0% (DOWN) - Total: ${batteryData.downSla.length} site:*\n`;
+        batteryData.downSla.forEach(site => {
+          const problem = site.problem ? ` - ${site.problem}` : '';
+          section += `  • ${site.site} - ${site.downtime || ''}${problem}\n`;
         });
-        
-        if (filteredDownSla.length > 0) {
-          section += `⚠️ SITE DENGAN SLA = 0% (DOWN) - Total: ${filteredDownSla.length} site:\n`;
-          filteredDownSla.forEach(site => {
-            // section += `  • ${site.site} - ${site.downtime || ''} - ${site.problem || ''}\n`;
-            const problem = site.problem ? ` - ${site.problem}` : '';
-            section += `  • ${site.site} - ${site.downtime || ''}${problem}\n`;
-          });
-          section += `\n`;
-        }
+        section += `\n`;
       }
 
       // Under SLA (< 95.5%)
-      // Filter: hanya tampilkan site dengan SLA <= 95%
       if (batteryData.underSla && batteryData.underSla.length > 0) {
-        const filteredUnderSla = batteryData.underSla.filter(site => {
-          const sla = typeof site.sla === 'number' ? site.sla : 0;
-          return sla <= 95;
+        section += `*SITE DENGAN SLA < 95.5% - Total: ${batteryData.underSla.length} site:*\n`;
+        batteryData.underSla.forEach(site => {
+          const slaValue = typeof site.sla === 'number' ? site.sla.toFixed(2) : 'N/A';
+          const problem = site.problem ? ` - ${site.problem}` : '';
+          section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''})${problem}\n`;
         });
-        
-        if (filteredUnderSla.length > 0) {
-          section += `⚠️ SITE DENGAN SLA < 95.5% - Total: ${filteredUnderSla.length} site:\n`;
-          filteredUnderSla.forEach(site => {
-            const slaValue = typeof site.sla === 'number' ? site.sla.toFixed(2) : 'N/A';
-            // section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''}) - ${site.problem || ''}\n`;
-            // jika ada problem, gunakan '-' jika tidak, jangan ada '-'
-            const problem = site.problem ? ` - ${site.problem}` : '';
-            section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''})${problem}\n`;
-          });
-          section += `\n`;
-        }
+        section += `\n`;
       }
 
       // Drop SLA
-      // Filter: hanya tampilkan site dengan slaNow <= 95%
       if (batteryData.dropSla && batteryData.dropSla.length > 0) {
-        const filteredDropSla = batteryData.dropSla.filter(site => {
-          const slaNow = typeof site.slaNow === 'number' ? site.slaNow : 0;
-          return slaNow <= 95;
+        section += `*PENURUNAN SLA - Total: ${batteryData.dropSla.length} site:*\n`;
+        batteryData.dropSla.forEach(site => {
+          const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
+          const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
+          const problem = site.problem ? ` - ${site.problem}` : '';
+          section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''}${problem}\n`;
         });
-        
-        if (filteredDropSla.length > 0) {
-          section += `📉 PENURUNAN SLA - Total: ${filteredDropSla.length} site:\n`;
-          filteredDropSla.forEach(site => {
-            const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
-            const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
-            // section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''} - ${site.problem || ''}\n`;
-            const problem = site.problem ? ` - ${site.problem}` : '';
-            section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''}${problem}\n`;
-          });
-          section += `\n`;
-        }
+        section += `\n`;
       }
 
       // Up SLA
       if (batteryData.upSla && batteryData.upSla.length > 0) {
-        section += `📈 KENAIKAN SLA - Total: ${batteryData.upSla.length} site:\n`;
+        section += `*KENAIKAN SLA - Total: ${batteryData.upSla.length} site:*\n`;
         batteryData.upSla.forEach(site => {
           const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
           const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
@@ -147,7 +117,7 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
         talis5Data,
         talis5Data.name || 'Talis5 Full'
       );
-      reportText += `${'━'.repeat(42)}\n\n`;
+      reportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     }
 
     // Talis5 Mix
@@ -157,7 +127,7 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
         mixData,
         mixData.name || 'Talis5 Mix'
       );
-      reportText += `${'━'.repeat(42)}\n\n`;
+      reportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     }
 
     // JSPro
@@ -167,127 +137,7 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
         jsproData,
         jsproData.name || 'JS PRO'
       );
-      reportText += `${'━'.repeat(42)}\n\n`;
-    }
-
-    // Potensi SP Sites
-    
-    // Handle case where potensiSPSites might be an object with 'sites' property
-    let validPotensiSPSites: SiteMaster[] = [];
-    if (Array.isArray(potensiSPSites)) {
-      validPotensiSPSites = potensiSPSites;
-    } else if (potensiSPSites && typeof potensiSPSites === 'object' && 'sites' in potensiSPSites) {
-      // Handle case where the entire response object was passed instead of just sites array
-      const responseObj = potensiSPSites as { sites?: SiteMaster[] };
-      validPotensiSPSites = Array.isArray(responseObj.sites) ? responseObj.sites : [];
-    }
-    
-    if (validPotensiSPSites.length > 0) {
-      // Group by battery version
-      const groupedByBattery: Record<string, Array<{ siteName: string; slaAvg?: number }>> = {
-        'Talis5 Full': [],
-        'Talis5 Mix': [],
-        'JS PRO': [],
-        'Other': [],
-      };
-
-      validPotensiSPSites.forEach(site => {
-        // Handle different possible field names from API
-        const siteObj = site as Record<string, unknown>;
-        const siteName = String(
-          site.siteName || 
-          siteObj.name || 
-          siteObj.site_name || 
-          siteObj.siteName || 
-          'Unknown Site'
-        );
-        const batteryVersion = String(
-          site.batteryVersion || 
-          siteObj.battery_version || 
-          siteObj.batteryVersion || 
-          'Other'
-        ).toLowerCase();
-        
-        // Get SLA average from siteSla object (new structure) or fallback to legacy fields
-        let slaAvg: number | undefined;
-        if (site.siteSla && typeof site.siteSla === 'object' && 'slaAverage' in site.siteSla) {
-          const siteSlaObj = site.siteSla as { slaAverage?: number };
-          slaAvg = typeof siteSlaObj.slaAverage === 'number' ? siteSlaObj.slaAverage : undefined;
-        } else if (site.slaAvg !== undefined) {
-          slaAvg = site.slaAvg;
-        } else if (typeof siteObj.sla_avg === 'number') {
-          slaAvg = siteObj.sla_avg;
-        } else if (typeof siteObj.slaAvg === 'number') {
-          slaAvg = siteObj.slaAvg;
-        }
-
-        const normalizedSite = {
-          siteName,
-          slaAvg,
-        };
-
-        if (batteryVersion.includes('talis5 full') || batteryVersion === 'talis5') {
-          groupedByBattery['Talis5 Full'].push(normalizedSite);
-        } else if (batteryVersion.includes('talis5 mix') || batteryVersion === 'mix') {
-          groupedByBattery['Talis5 Mix'].push(normalizedSite);
-        } else if (batteryVersion.includes('jspro') || batteryVersion === 'jspro' || batteryVersion.includes('js pro')) {
-          groupedByBattery['JS PRO'].push(normalizedSite);
-        } else {
-          groupedByBattery['Other'].push(normalizedSite);
-        }
-      });
-
-      reportText += `⚠️ SITE DENGAN POTENSI SP - Total: ${validPotensiSPSites.length} site:\n\n`;
-
-      // Helper function to format SLA value
-      const formatSLA = (sla: number | undefined): string => {
-        if (sla === undefined || isNaN(sla)) {
-          return ' - N/A';
-        }
-        // Format: if 0, show as "0 %", otherwise show with 2 decimals
-        if (sla === 0) {
-          return ' - 0 %';
-        }
-        return ` - ${sla.toFixed(2)} %`;
-      };
-
-      // Talis5 Full
-      if (groupedByBattery['Talis5 Full'].length > 0) {
-        reportText += `Talis5 Full (${groupedByBattery['Talis5 Full'].length} site):\n\n`;
-        groupedByBattery['Talis5 Full'].forEach(site => {
-          reportText += `  • ${site.siteName}${formatSLA(site.slaAvg)}\n`;
-        });
-        reportText += `\n`;
-      }
-
-      // Talis5 Mix
-      if (groupedByBattery['Talis5 Mix'].length > 0) {
-        reportText += `Talis5 Mix (${groupedByBattery['Talis5 Mix'].length} site):\n\n`;
-        groupedByBattery['Talis5 Mix'].forEach(site => {
-          reportText += `  • ${site.siteName}${formatSLA(site.slaAvg)}\n`;
-        });
-        reportText += `\n`;
-      }
-
-      // JS PRO
-      if (groupedByBattery['JS PRO'].length > 0) {
-        reportText += `JS PRO (${groupedByBattery['JS PRO'].length} site):\n\n`;
-        groupedByBattery['JS PRO'].forEach(site => {
-          reportText += `  • ${site.siteName}${formatSLA(site.slaAvg)}\n`;
-        });
-        reportText += `\n`;
-      }
-
-      // Other (jika ada)
-      if (groupedByBattery['Other'].length > 0) {
-        reportText += `Other (${groupedByBattery['Other'].length} site):\n\n`;
-        groupedByBattery['Other'].forEach(site => {
-          reportText += `  • ${site.siteName}${formatSLA(site.slaAvg)}\n`;
-        });
-        reportText += `\n`;
-      }
-
-      reportText += `${'━'.repeat(42)}\n\n`;
+      reportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     }
 
     // GAMAS History (jika ada di tanggal yang sama)
@@ -297,7 +147,7 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
     );
 
     if (sameDateGAMAS.length > 0) {
-      reportText += `🚨 HISTORY GAMAS:\n`;
+      reportText += `*HISTORY GAMAS:*\n`;
       sameDateGAMAS.forEach(item => {
         const affectedText = item.affectedSites > 0 
           ? ` (${item.affectedSites} site terdampak)` 
@@ -305,7 +155,7 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
         reportText += `  • ${formatDate(item.date)}: ${item.description}${affectedText}\n`;
       });
       reportText += `\n`;
-      reportText += `${'━'.repeat(42)}\n\n`;
+      reportText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     }
 
     reportText += `Generated by SLA Dash Sundaya`;
@@ -467,7 +317,7 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Laporan Ringkas</h3>
+          <h3 className="text-lg font-semibold text-foreground">Report Daily</h3>
         </div>
         
         <Button 
