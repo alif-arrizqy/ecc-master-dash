@@ -8,6 +8,7 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 // Get environment variables with fallback defaults for development
 const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL || 'http://localhost:3002';
 const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL || 'http://localhost:3001';
+const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL || 'http://localhost:3003';
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
   console.warn('VITE_SLA_SERVICES_URL is not set. Using default: http://localhost:3002');
@@ -46,6 +47,17 @@ const slaApiClient: AxiosInstance = axios.create({
  */
 const sitesApiClient: AxiosInstance = axios.create({
   baseURL: SITES_SERVICES_URL,
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Create axios instance for Monitoring Services
+ */
+const monitoringApiClient: AxiosInstance = axios.create({
+  baseURL: MONITORING_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -1103,6 +1115,57 @@ export const slaApi = {
         bySccType: Record<string, number>;
       };
     }>('/api/v1/sites/statistics');
+  },
+};
+
+/**
+ * Monitoring Services API
+ */
+export const monitoringApi = {
+  /**
+   * Get all site downtime data
+   * GET /api/v1/site-down
+   */
+  getSiteDowntime: async (params?: {
+    page?: number;
+    limit?: number;
+    siteId?: string;
+  }) => {
+    return monitoringApiClient.get<ApiResponse<{
+      data: Array<{
+        id: number;
+        siteId: string;
+        siteName: string | null;
+        downSince: string;
+        downSeconds: number | null;
+        createdAt: string;
+        updatedAt: string;
+      }>;
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>>('/api/v1/site-down', {
+      params,
+    });
+  },
+
+  /**
+   * Get site downtime by Site ID
+   * GET /api/v1/site-down/:siteId
+   */
+  getSiteDowntimeBySiteId: async (siteId: string) => {
+    return monitoringApiClient.get<ApiResponse<{
+      id: number;
+      siteId: string;
+      siteName: string | null;
+      downSince: string;
+      downSeconds: number | null;
+      createdAt: string;
+      updatedAt: string;
+    }>>(`/api/v1/site-down/${siteId}`);
   },
 };
 
