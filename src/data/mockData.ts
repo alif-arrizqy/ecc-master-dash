@@ -32,6 +32,7 @@ export interface SLARecord {
 
 export interface DailySLA {
   day: number;
+  date?: string; // Format: YYYY-MM-DD
   sla: number;
 }
 
@@ -62,9 +63,18 @@ export const summaryData = {
 // Daily SLA data for current month
 export const generateDailySLA = (): DailySLA[] => {
   const days = [];
-  for (let i = 1; i <= 31; i++) {
+  const currentDate = new Date();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth(); // 0-11
+  
+  // Get the number of days in the current month
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  for (let i = 1; i <= daysInMonth; i++) {
+    const date = new Date(year, month, i);
     days.push({
       day: i,
+      date: date.toISOString().split('T')[0], // Format: YYYY-MM-DD
       sla: 85 + Math.random() * 15,
     });
   }
@@ -145,10 +155,19 @@ export const generateSites = (count: number): Site[] => {
   for (let i = 0; i < count; i++) {
     const batteryVersion = batteryVersions[i % 3];
     const slaAvg = 80 + Math.random() * 20;
-    const dailySla = Array.from({ length: 31 }, (_, day) => ({
-      day: day + 1,
-      sla: 80 + Math.random() * 20,
-    }));
+    const currentDate = new Date();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const dailySla = Array.from({ length: daysInMonth }, (_, day) => {
+      const date = new Date(year, month, day + 1);
+      return {
+        day: day + 1,
+        date: date.toISOString().split('T')[0],
+        sla: 80 + Math.random() * 20,
+      };
+    });
 
     sites.push({
       id: `site-${i + 1}`,
@@ -174,11 +193,16 @@ export const generateProblems = (sites: Site[]): Problem[] => {
     // Only sites with low SLA have problems
     if (site.slaAvg < 95.5) {
       const problemCount = Math.floor(Math.random() * 4) + 1; // 1-4 problems per site
+      const currentDate = new Date();
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      
       for (let i = 0; i < problemCount; i++) {
         problems.push({
           id: `problem-${problemId++}`,
           siteId: site.id,
-          date: new Date(2024, 11, Math.floor(Math.random() * 31) + 1).toISOString().split('T')[0],
+          date: new Date(year, month, Math.floor(Math.random() * daysInMonth) + 1).toISOString().split('T')[0],
           pic: picTypes[Math.floor(Math.random() * picTypes.length)],
           problem: problemDescriptions[Math.floor(Math.random() * problemDescriptions.length)],
           notes: problemNotes[Math.floor(Math.random() * problemNotes.length)],
