@@ -5,9 +5,13 @@ import CompactDailySLAChart from './dashboard/components/CompactDailySLAChart';
 import SLACausesTable from './dashboard/components/SLACausesTable';
 import GAMASHistoryCard from './dashboard/components/GAMASHistoryCard';
 import ReportSection from './dashboard/components/ReportSection';
+import PotensiSPSection from './dashboard/components/SlaBelow95';
 import { Loading } from '@/components/ui/loading';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { useRefreshCache } from '@/hooks/useRefreshCache';
 import { 
   useDailySLAChartByBatteryVersion,
   useDailySLAChartAllSites,
@@ -16,13 +20,15 @@ import {
   useSLAReasons,
   useGAMASHistory,
   useSLAReportDetail,
-  usePotensiSPSites,
 } from '@/hooks/useSLAQueries';
-import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getPotensiSPDateRange, getSLADashboardDateRange } from '@/lib/dateUtils';
+import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getSLADashboardDateRange } from '@/lib/dateUtils';
 import WeeklyTrendChart from './dashboard/components/WeeklyTrendChart';
-import { SLAReportDetail, PotensiSPSitesResponse } from '@/types/api';
+import { SLAReportDetail } from '@/types/api';
 
 const Index = () => {
+  // Hook untuk refresh cache
+  const refreshCache = useRefreshCache();
+  
   // Get date range for dashboard charts (daily charts, SLA reasons, weekly chart, GAMAS history)
   // Rules: tanggal 1 = bulan sebelumnya (full month), tanggal 2+ = bulan ini (full month)
   const dashboardDateRange = getSLADashboardDateRange();
@@ -103,19 +109,8 @@ const Index = () => {
   const reportDetail = reportDetailQuery.data as SLAReportDetail | undefined;
   const isLoadingReport = reportDetailQuery.isLoading;
 
-  // Fetch Potensi SP sites
-  const potensiSPDateRange = getPotensiSPDateRange();
-  const potensiSPQuery = usePotensiSPSites({ 
-    startDate: potensiSPDateRange.startDate, 
-    endDate: potensiSPDateRange.endDate,
-    statusSP: 'Potensi SP',
-    limit: 100
-  });
-  const potensiSPData = potensiSPQuery.data as PotensiSPSitesResponse | undefined;
-  const isLoadingPotensiSP = potensiSPQuery.isLoading;
-  
-  // Type-safe extraction of sites array
-  const potensiSPSites = potensiSPData?.sites || [];
+  // Extract slaBelow95 data from reportDetail (already included in daily report response)
+  const slaBelow95Data = reportDetail?.slaBelow95;
 
   // Combine SLA reasons
   const slaCauses = [
@@ -165,9 +160,29 @@ const Index = () => {
                 
                 {/* Right Column - Daily SLA Charts */}
                 <div className="col-span-12 lg:col-span-9 space-y-3">
-                  <h2 className="text-sm font-semibold text-primary uppercase tracking-wide">
-                    Daily SLA AVG Bulan {currentMonthName}
-                  </h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-primary uppercase tracking-wide">
+                      Daily SLA AVG Bulan {currentMonthName}
+                    </h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={refreshCache.isPending}
+                      onClick={() => {
+                        // Refresh cache menggunakan dashboard date range
+                        refreshCache.mutate(undefined);
+                      }}
+                      className="group gap-2 border-primary/50 text-primary hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    >
+                      <RefreshCw 
+                        className={cn(
+                          "h-4 w-4 transition-transform duration-300",
+                          refreshCache.isPending ? "animate-spin" : "group-hover:rotate-180"
+                        )} 
+                      />
+                      Refresh Data
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-1 gap-3">
                     {isLoadingTalis5Full ? (
                       <Loading size="sm" />
@@ -243,17 +258,29 @@ const Index = () => {
               </div>
             </section>
             
-            {/* Report Section */}
+            {/* Report Section and Potensi SP Section */}
             <section className="mb-6">
-              {isLoadingReport || isLoadingPotensiSP ? (
-                <Loading text="Memuat laporan detail..." />
-              ) : (
-                <ReportSection 
-                  reportData={reportDetail}
-                  gamasHistory={gamasHistory}
-                  potensiSPSites={potensiSPSites}
-                />
-              )}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Laporan Ringkas */}
+                <div>
+                  {isLoadingReport ? (
+                    <Loading text="Memuat laporan detail..." />
+                  ) : (
+                    <ReportSection 
+                      reportData={reportDetail}
+                      gamasHistory={gamasHistory}
+                    />
+                  )}
+                </div>
+                
+                {/* SLA Below 95.5% Section */}
+                <div>
+                  <PotensiSPSection
+                    slaBelow95Data={slaBelow95Data}
+                    isLoading={isLoadingReport}
+                  />
+                </div>
+              </div>
             </section>
           </>
         )}
@@ -263,7 +290,7 @@ const Index = () => {
       <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-4 mt-8">
         <div className="w-full px-2 text-center">
           <p className="text-sm text-muted-foreground">
-          © {new Date().getFullYear()} ECC Master Dashboard. All rights reserved.
+          © {new Date().getFullYear()} ECC Master Dashboard - Sundaya Indonesia. All rights reserved.
           </p>
         </div>
       </footer>
