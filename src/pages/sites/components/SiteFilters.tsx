@@ -14,11 +14,13 @@ interface SiteFiltersProps {
   sccTypeFilter: string;
   batteryVersionFilter: string;
   provinceFilter: string;
+  isActiveFilter: string;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: string) => void;
   onSccTypeChange: (value: string) => void;
   onBatteryVersionChange: (value: string) => void;
   onProvinceChange: (value: string) => void;
+  onIsActiveChange: (value: string) => void;
 }
 
 export const SiteFilters = ({
@@ -27,16 +29,18 @@ export const SiteFilters = ({
   sccTypeFilter,
   batteryVersionFilter,
   provinceFilter,
+  isActiveFilter,
   onSearchChange,
   onStatusChange,
   onSccTypeChange,
   onBatteryVersionChange,
   onProvinceChange,
+  onIsActiveChange,
 }: SiteFiltersProps) => {
   return (
     <Card className="mb-6 card-shadow animate-slide-up">
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -64,7 +68,7 @@ export const SiteFilters = ({
               <SelectValue placeholder="SCC Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua SCC Type</SelectItem>
+              <SelectItem value="all">Semua SCC</SelectItem>
               {SCC_TYPES.map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
@@ -77,7 +81,7 @@ export const SiteFilters = ({
               <SelectValue placeholder="Battery Version" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Battery</SelectItem>
+              <SelectItem value="all">Semua Baterai</SelectItem>
               {BATTERY_VERSIONS.map((bv) => (
                 <SelectItem key={bv.value} value={bv.value}>
                   {bv.label}
@@ -90,12 +94,22 @@ export const SiteFilters = ({
               <SelectValue placeholder="Province" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Province</SelectItem>
+              <SelectItem value="all">Semua Provinsi</SelectItem>
               {PROVINCES.map((prov) => (
                 <SelectItem key={prov} value={prov}>
                   {prov}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={isActiveFilter} onValueChange={onIsActiveChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Status Site" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="true">Site Aktif</SelectItem>
+              <SelectItem value="false">Site Nonaktif</SelectItem>
+              <SelectItem value="all">Semua Site</SelectItem>
             </SelectContent>
           </Select>
         </div>

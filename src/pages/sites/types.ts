@@ -48,17 +48,43 @@ export interface Site {
 }
 
 export interface SiteFormData {
+  prCode?: string;
   siteId?: string;
+  clusterId?: string;
+  terminalId?: string;
   siteName?: string;
   ipSnmp?: string;
+  ipMiniPc?: string;
+  webappUrl?: string;
+  ehubVersion?: string;
+  panel2Type?: string;
   sccType?: string;
   batteryVersion?: string;
   totalBattery?: number;
   statusSites?: string;
-  webappUrl?: string;
+  isActive?: boolean;
   detail?: {
+    village?: string;
+    subdistrict?: string;
+    regency?: string;
     province?: string;
+    longitude?: number;
+    latitude?: number;
+    ipGatewayGs?: string;
+    ipGatewayLc?: string;
+    subnet?: string;
+    batteryList?: string[];
+    cabinetList?: string[];
+    buildYear?: string;
+    projectPhase?: string;
+    onairDate?: string;
+    gsSustainDate?: string;
+    topoSustainDate?: string;
     talisInstalled?: string;
+    providerGs?: string;
+    beamProvider?: string;
+    cellularOperator?: string;
+    contactPerson?: Array<{ name: string; phone: string }>;
   };
   [key: string]: unknown;
 }

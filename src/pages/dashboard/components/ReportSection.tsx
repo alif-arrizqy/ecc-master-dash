@@ -66,33 +66,64 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
       section += `SLA Average: ${sla.toFixed(2)}%\n\n`;
 
       // Down SLA (SLA = 0%)
+      // Filter: hanya tampilkan site dengan SLA <= 95% (biasanya downSla adalah 0%, tapi filter untuk konsistensi)
       if (batteryData.downSla && batteryData.downSla.length > 0) {
-        section += `⚠️ SITE DENGAN SLA = 0% (DOWN) - Total: ${batteryData.downSla.length} site:\n`;
-        batteryData.downSla.forEach(site => {
-          section += `  • ${site.site} - ${site.downtime || ''} - ${site.problem || ''}\n`;
+        const filteredDownSla = batteryData.downSla.filter(site => {
+          const sla = typeof site.sla === 'number' ? site.sla : 0;
+          return sla <= 95;
         });
-        section += `\n`;
+        
+        if (filteredDownSla.length > 0) {
+          section += `⚠️ SITE DENGAN SLA = 0% (DOWN) - Total: ${filteredDownSla.length} site:\n`;
+          filteredDownSla.forEach(site => {
+            // section += `  • ${site.site} - ${site.downtime || ''} - ${site.problem || ''}\n`;
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} - ${site.downtime || ''}${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Under SLA (< 95.5%)
+      // Filter: hanya tampilkan site dengan SLA <= 95%
       if (batteryData.underSla && batteryData.underSla.length > 0) {
-        section += `⚠️ SITE DENGAN SLA < 95.5% - Total: ${batteryData.underSla.length} site:\n`;
-        batteryData.underSla.forEach(site => {
-          const slaValue = typeof site.sla === 'number' ? site.sla.toFixed(2) : 'N/A';
-          section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''}) - ${site.problem || ''}\n`;
+        const filteredUnderSla = batteryData.underSla.filter(site => {
+          const sla = typeof site.sla === 'number' ? site.sla : 0;
+          return sla <= 95;
         });
-        section += `\n`;
+        
+        if (filteredUnderSla.length > 0) {
+          section += `⚠️ SITE DENGAN SLA < 95.5% - Total: ${filteredUnderSla.length} site:\n`;
+          filteredUnderSla.forEach(site => {
+            const slaValue = typeof site.sla === 'number' ? site.sla.toFixed(2) : 'N/A';
+            // section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''}) - ${site.problem || ''}\n`;
+            // jika ada problem, gunakan '-' jika tidak, jangan ada '-'
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''})${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Drop SLA
+      // Filter: hanya tampilkan site dengan slaNow <= 95%
       if (batteryData.dropSla && batteryData.dropSla.length > 0) {
-        section += `📉 PENURUNAN SLA - Total: ${batteryData.dropSla.length} site:\n`;
-        batteryData.dropSla.forEach(site => {
-          const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
-          const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
-          section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''} - ${site.problem || ''}\n`;
+        const filteredDropSla = batteryData.dropSla.filter(site => {
+          const slaNow = typeof site.slaNow === 'number' ? site.slaNow : 0;
+          return slaNow <= 95;
         });
-        section += `\n`;
+        
+        if (filteredDropSla.length > 0) {
+          section += `📉 PENURUNAN SLA - Total: ${filteredDropSla.length} site:\n`;
+          filteredDropSla.forEach(site => {
+            const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
+            const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
+            // section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''} - ${site.problem || ''}\n`;
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''}${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Up SLA
