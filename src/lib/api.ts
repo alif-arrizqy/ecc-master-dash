@@ -414,7 +414,7 @@ export const slaApi = {
 
   /**
    * Get detailed SLA report
-   * GET /api/v1/sla-bakti/report
+   * GET /api/v1/sla-bakti/daily/report
    */
   getSLAReportDetail: async (params: {
     startDate: string;
