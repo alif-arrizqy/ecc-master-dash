@@ -6,15 +6,15 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 
 // Get environment variables with fallback defaults for development
-const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL || 'http://localhost:3002';
-const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL || 'http://localhost:3001';
+const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL;
+const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
-  console.warn('VITE_SLA_SERVICES_URL is not set. Using default: http://localhost:3002');
+  console.warn('VITE_SLA_SERVICES_URL is not set.');
 }
 
 if (!import.meta.env.VITE_SITES_SERVICES_URL) {
-  console.warn('VITE_SITES_SERVICES_URL is not set. Using default: http://localhost:3001');
+  console.warn('VITE_SITES_SERVICES_URL is not set.');
 }
 
 export type BatteryVersion = 'talis5' | 'mix' | 'jspro';
@@ -33,7 +33,7 @@ interface ApiResponse<T> {
 /**
  * Create axios instance for SLA Services
  */
-const slaApiClient: AxiosInstance = axios.create({
+export const slaApiClient: AxiosInstance = axios.create({
   baseURL: SLA_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
@@ -44,7 +44,7 @@ const slaApiClient: AxiosInstance = axios.create({
 /**
  * Create axios instance for Sites Services
  */
-const sitesApiClient: AxiosInstance = axios.create({
+export const sitesApiClient: AxiosInstance = axios.create({
   baseURL: SITES_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
