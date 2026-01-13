@@ -1116,6 +1116,19 @@ export const slaApi = {
       };
     }>('/api/v1/sites/statistics');
   },
+
+  /**
+   * Refresh/Reset Redis cache by date range
+   * POST /api/v1/cache/refresh
+   */
+  refreshCache: async (params?: { startDate?: string; endDate?: string }) => {
+    const response = await slaApiClient.post<ApiResponse<{
+      message: string;
+      startDate: string;
+      endDate: string;
+    }>>('/api/v1/cache/refresh', params || {});
+    return response.data.data;
+  },
 };
 
 /**
