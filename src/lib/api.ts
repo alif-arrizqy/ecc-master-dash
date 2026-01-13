@@ -34,7 +34,7 @@ interface ApiResponse<T> {
 /**
  * Create axios instance for SLA Services
  */
-const slaApiClient: AxiosInstance = axios.create({
+export const slaApiClient: AxiosInstance = axios.create({
   baseURL: SLA_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
@@ -45,7 +45,7 @@ const slaApiClient: AxiosInstance = axios.create({
 /**
  * Create axios instance for Sites Services
  */
-const sitesApiClient: AxiosInstance = axios.create({
+export const sitesApiClient: AxiosInstance = axios.create({
   baseURL: SITES_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
@@ -56,7 +56,7 @@ const sitesApiClient: AxiosInstance = axios.create({
 /**
  * Create axios instance for Monitoring Services
  */
-const monitoringApiClient: AxiosInstance = axios.create({
+export const monitoringApiClient: AxiosInstance = axios.create({
   baseURL: MONITORING_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
