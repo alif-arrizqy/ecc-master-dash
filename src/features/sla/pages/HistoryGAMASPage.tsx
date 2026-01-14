@@ -1,4 +1,4 @@
-import Navbar from '@/components/layout/Navbar';
+import Navbar from '@/shared/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { History, Plus, Edit, Trash2, Search, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { slaApi } from '../services/sla.api';
 import { format } from 'date-fns';
-import { getSLADateRange } from '@/lib/dateUtils';
+import { getSLADateRange } from '@/shared/lib/dateUtils';
 import {
   Dialog,
   DialogContent,

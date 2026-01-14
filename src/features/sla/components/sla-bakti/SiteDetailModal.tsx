@@ -3,7 +3,7 @@ import { X, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Site, Problem } from '@/data/mockData';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { format, startOfMonth, endOfMonth, subMonths, eachDayOfInterval } from 'date-fns';
 
 interface SiteDetailModalProps {

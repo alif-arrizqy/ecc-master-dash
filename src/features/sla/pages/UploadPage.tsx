@@ -1,4 +1,4 @@
-import Navbar from '@/components/layout/Navbar';
+import Navbar from '@/shared/components/layout/Navbar';
 import FileUpload from '../components/sla-bakti/FileUpload';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, FileSpreadsheet } from 'lucide-react';
