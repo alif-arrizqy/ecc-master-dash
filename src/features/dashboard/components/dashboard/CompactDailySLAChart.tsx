@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, LabelList } from 'recharts';
-import { DailySLA } from '@/data/mockData';
+import { DailySLA } from '@/shared/data/mockData';
 
 interface CompactDailySLAChartProps {
   data: DailySLA[];

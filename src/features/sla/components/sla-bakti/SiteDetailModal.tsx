@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { X, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Site, Problem } from '@/data/mockData';
+import { Site, Problem } from '@/shared/data/mockData';
 import { cn } from '@/shared/lib/utils';
 import { format, startOfMonth, endOfMonth, subMonths, eachDayOfInterval } from 'date-fns';
 
