@@ -4,7 +4,6 @@
  */
 
 import { useState } from 'react';
-import Navbar from '@/shared/components/layout/Navbar';
 import { MonitoringSummary } from '../components/MonitoringSummary';
 import { SiteDownTable } from '../components/SiteDownTable';
 import { useSiteDown } from '../hooks/useMonitoringQueries';
@@ -42,9 +41,7 @@ export const SiteDownPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
-      <Navbar />
-      <main className="w-full px-2 py-4 container mx-auto">
+    <div className="w-full px-2 py-4 container mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Site Down Monitoring</h1>
           <p className="text-muted-foreground">
