@@ -9,13 +9,13 @@ import NotFound from "../pages/NotFound";
 import UnderDevelopment from "../pages/UnderDevelopment";
 import Layout from "@/shared/components/layout/Layout";
 
-// Dashboard Page (Lazy loaded)
+// Dashboard Page
 const Dashboard = lazy(() => import("../features/dashboard/pages/Dashboard").then(m => ({ default: m.default })));
 
-// Sites Pages (Lazy loaded)
+// Sites Pages
 const SitesPage = lazy(() => import("../features/sites/SitesPage").then(m => ({ default: m.default })));
 
-// SLA Bakti Pages (Lazy loaded)
+// SLA Bakti Pages
 const UploadPage = lazy(() => import("../features/sla/pages/UploadPage").then(m => ({ default: m.default })));
 const MasterDataPage = lazy(() => import("../features/sla/pages/MasterDataPage").then(m => ({ default: m.default })));
 const ProblemPage = lazy(() => import("../features/sla/pages/ProblemPage").then(m => ({ default: m.default })));
@@ -23,9 +23,8 @@ const ReasonPage = lazy(() => import("../features/sla/pages/ReasonPage").then(m 
 const HistoryGAMASPage = lazy(() => import("../features/sla/pages/HistoryGAMASPage").then(m => ({ default: m.default })));
 const RawSLAPage = lazy(() => import("../features/sla/pages/RawSLAPage").then(m => ({ default: m.default })));
 
-// Monitoring Pages (Lazy loaded)
+// Monitoring Pages
 const MonitoringDashboard = lazy(() => import("../features/monitoring/pages/MonitoringDashboard").then(m => ({ default: m.MonitoringDashboard })));
-const SiteDownPage = lazy(() => import("../features/monitoring/pages/SiteDownPage").then(m => ({ default: m.SiteDownPage })));
 
 const queryClient = new QueryClient();
 
