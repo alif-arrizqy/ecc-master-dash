@@ -8,6 +8,10 @@ export interface SiteDown {
   siteName: string;
   downSince: string; // ISO 8601 date string
   downSeconds: number;
+  slaAvg?: number;
+  statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
+  statusSP?: 'Potensi SP' | 'Clear SP';
+  problem?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -16,6 +20,9 @@ export interface SiteUp {
   id: number;
   siteId: string;
   siteName: string;
+  slaAvg?: number;
+  statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
+  problem?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -61,5 +68,9 @@ export interface SiteDownWithStatus extends SiteDown {
   status: SiteDownStatus;
   formattedDuration: string;
   formattedDownSince: string;
+  slaAvg?: number;
+  statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
+  statusSP?: 'Potensi SP' | 'Clear SP';
+  problem?: string[];
 }
 

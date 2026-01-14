@@ -6,7 +6,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { MapPin, Plus } from 'lucide-react';
-import Navbar from '@/shared/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -294,10 +293,7 @@ const SitesPage = () => {
     data?.pagination || { page: 1, limit: ITEMS_PER_PAGE, total: 0, totalPages: 0 };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
-      <Navbar />
-
-      <main className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8 animate-fade-in">
           <div className="flex items-center justify-between">
@@ -444,94 +440,6 @@ const SitesPage = () => {
             )}
           </CardContent>
         </Card>
-      </main>
-
-      {/* Details Dialog */}
-      <SiteDetailsDialog
-        site={viewingDetails}
-        open={!!viewingDetails}
-        onOpenChange={(open) => !open && setViewingDetails(null)}
-      />
-
-      {/* Delete/Activate/Deactivate Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {deleteAction === 'delete'
-                ? 'Hapus Permanen Site'
-                : deleteAction === 'activate'
-                  ? 'Aktifkan Site'
-                  : 'Nonaktifkan Site'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteAction === 'delete' ? (
-                <>
-                  Apakah Anda yakin ingin menghapus permanen site "{selectedSite?.siteName}" (
-                  {selectedSite?.siteId})? Tindakan ini tidak dapat dibatalkan.
-                </>
-              ) : deleteAction === 'activate' ? (
-                <>
-                  Apakah Anda yakin ingin mengaktifkan site "{selectedSite?.siteName}" (
-                  {selectedSite?.siteId})?
-                </>
-              ) : (
-                <>
-                  Apakah Anda yakin ingin menonaktifkan site "{selectedSite?.siteName}" (
-                  {selectedSite?.siteId})?
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <Label className="mb-2 block">Pilih Aksi:</Label>
-            <Select value={deleteAction} onValueChange={(value) => setDeleteAction(value as typeof deleteAction)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {selectedSite?.isActive ? (
-                  <>
-                    <SelectItem value="deactivate">Nonaktifkan Site</SelectItem>
-                    <SelectItem value="delete">Hapus Permanen</SelectItem>
-                  </>
-                ) : (
-                  <>
-                    <SelectItem value="activate">Aktifkan Site</SelectItem>
-                    <SelectItem value="delete">Hapus Permanen</SelectItem>
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className={
-                deleteAction === 'delete'
-                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                  : ''
-              }
-            >
-              {deleteAction === 'delete'
-                ? 'Hapus Permanen'
-                : deleteAction === 'activate'
-                  ? 'Aktifkan'
-                  : 'Nonaktifkan'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-4 mt-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ECC Master Dashboard. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };

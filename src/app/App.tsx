@@ -7,6 +7,7 @@ import { lazy, Suspense } from "react";
 import { Loading } from "@/components/ui/loading";
 import NotFound from "../pages/NotFound";
 import UnderDevelopment from "../pages/UnderDevelopment";
+import Layout from "@/shared/components/layout/Layout";
 
 // Dashboard Page (Lazy loaded)
 const Dashboard = lazy(() => import("../features/dashboard/pages/Dashboard").then(m => ({ default: m.default })));
@@ -34,107 +35,98 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              <Suspense fallback={<Loading text="Memuat dashboard..." />}>
-                <Dashboard />
-              </Suspense>
-            } 
-          />
-          
-          {/* Sites Routes */}
-          <Route 
-            path="/sites" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman sites..." />}>
-                <SitesPage />
-              </Suspense>
-            } 
-          />
-          
-          {/* Monitoring Routes */}
-          <Route 
-            path="/monitoring" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman monitoring..." />}>
-                <MonitoringDashboard />
-              </Suspense>
-            } 
-          />
-          <Route 
-            path="/monitoring/site-down" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman site down..." />}>
-                <SiteDownPage />
-              </Suspense>
-            } 
-          />
-          <Route path="/monitoring/x" element={<UnderDevelopment title="Menu X" description="Halaman monitoring menu X" />} />
-          <Route path="/monitoring/y" element={<UnderDevelopment title="Menu Y" description="Halaman monitoring menu Y" />} />
-          
-          {/* SLA Bakti Routes */}
-          <Route 
-            path="/sla-bakti/upload" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman upload..." />}>
-                <UploadPage />
-              </Suspense>
-            } 
-          />
-          <Route 
-            path="/sla-bakti/master" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman master data..." />}>
-                <MasterDataPage />
-              </Suspense>
-            } 
-          />
-          <Route 
-            path="/sla-bakti/problem" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman problem..." />}>
-                <ProblemPage />
-              </Suspense>
-            } 
-          />
-          <Route 
-            path="/sla-bakti/reason" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman reason..." />}>
-                <ReasonPage />
-              </Suspense>
-            } 
-          />
-          <Route 
-            path="/sla-bakti/history-gamas" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman history GAMAS..." />}>
-                <HistoryGAMASPage />
-              </Suspense>
-            } 
-          />
-          <Route 
-            path="/sla-bakti/raw" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman raw SLA..." />}>
-                <RawSLAPage />
-              </Suspense>
-            } 
-          />
-          
-          {/* SLA Internal Routes */}
-          <Route path="/sla-internal/1" element={<UnderDevelopment title="SLA 1" description="Halaman SLA Internal 1" />} />
-          <Route path="/sla-internal/2" element={<UnderDevelopment title="SLA 2" description="Halaman SLA Internal 2" />} />
-          <Route path="/sla-internal/3" element={<UnderDevelopment title="SLA 3" description="Halaman SLA Internal 3" />} />
-          
-          {/* Tools Routes */}
-          <Route path="/tools/rekap-battery" element={<UnderDevelopment title="Rekap Battery" description="Halaman rekap battery" />} />
-          <Route path="/tools/x" element={<UnderDevelopment title="Menu X" description="Halaman tools menu X" />} />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Layout>
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                <Suspense fallback={<Loading text="Memuat dashboard..." />}>
+                  <Dashboard />
+                </Suspense>
+              } 
+            />
+            
+            {/* Sites Routes */}
+            <Route 
+              path="/sites" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman sites..." />}>
+                  <SitesPage />
+                </Suspense>
+              } 
+            />
+            
+            {/* Monitoring Routes */}
+            <Route 
+              path="/monitoring" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman monitoring..." />}>
+                  <MonitoringDashboard />
+                </Suspense>
+              } 
+            />
+            {/* SLA Bakti Routes */}
+            <Route 
+              path="/sla-bakti/upload" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman upload..." />}>
+                  <UploadPage />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/sla-bakti/master" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman master data..." />}>
+                  <MasterDataPage />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/sla-bakti/problem" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman problem..." />}>
+                  <ProblemPage />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/sla-bakti/reason" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman reason..." />}>
+                  <ReasonPage />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/sla-bakti/history-gamas" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman history GAMAS..." />}>
+                  <HistoryGAMASPage />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/sla-bakti/raw" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman raw SLA..." />}>
+                  <RawSLAPage />
+                </Suspense>
+              } 
+            />
+            
+            {/* SLA Internal Routes */}
+            <Route path="/sla-internal/1" element={<UnderDevelopment title="SLA 1" description="Halaman SLA Internal 1" />} />
+            <Route path="/sla-internal/2" element={<UnderDevelopment title="SLA 2" description="Halaman SLA Internal 2" />} />
+            <Route path="/sla-internal/3" element={<UnderDevelopment title="SLA 3" description="Halaman SLA Internal 3" />} />
+            
+            {/* Tools Routes */}
+            <Route path="/tools/rekap-battery" element={<UnderDevelopment title="Rekap Battery" description="Halaman rekap battery" />} />
+            <Route path="/tools/x" element={<UnderDevelopment title="Menu X" description="Halaman tools menu X" />} />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
