@@ -6,7 +6,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2, Activity } from 'lucide-react';
 import { MonitoringSummary as MonitoringSummaryType } from '../types/monitoring.types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 interface MonitoringSummaryProps {
   summary: MonitoringSummaryType;

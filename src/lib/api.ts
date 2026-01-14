@@ -34,7 +34,7 @@ interface ApiResponse<T> {
 /**
  * Create axios instance for SLA Services
  */
-const slaApiClient: AxiosInstance = axios.create({
+export const slaApiClient: AxiosInstance = axios.create({
   baseURL: SLA_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
@@ -45,7 +45,7 @@ const slaApiClient: AxiosInstance = axios.create({
 /**
  * Create axios instance for Sites Services
  */
-const sitesApiClient: AxiosInstance = axios.create({
+export const sitesApiClient: AxiosInstance = axios.create({
   baseURL: SITES_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
@@ -56,7 +56,7 @@ const sitesApiClient: AxiosInstance = axios.create({
 /**
  * Create axios instance for Monitoring Services
  */
-const monitoringApiClient: AxiosInstance = axios.create({
+export const monitoringApiClient: AxiosInstance = axios.create({
   baseURL: MONITORING_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
@@ -371,7 +371,7 @@ export const slaApi = {
    */
   getSLAReasonsByBatteryVersion: async (
     batteryVersion: BatteryVersion,
-    params?: { startDate?: string; endDate?: string }
+    params?: { startDate?: string; endDate?: string; period?: string }
   ) => {
     return fetchSlaApi<Array<{
       id: number;
@@ -382,6 +382,7 @@ export const slaApi = {
       params: {
         startDate: params?.startDate,
         endDate: params?.endDate,
+        period: params?.period,
       },
     });
   },
@@ -414,7 +415,7 @@ export const slaApi = {
 
   /**
    * Get detailed SLA report
-   * GET /api/v1/sla-bakti/report
+   * GET /api/v1/sla-bakti/daily/report
    */
   getSLAReportDetail: async (params: {
     startDate: string;
@@ -893,6 +894,7 @@ export const slaApi = {
   createSLAReasonBatteryVersion: async (data: {
     batteryVersion: BatteryVersion;
     reasonId: number;
+    period?: string; // Optional: format YYYY-MM, defaults to current month
   }) => {
     const response = await slaApiClient.post<ApiResponse<unknown>>('/api/v1/sla-reason/battery-version', data);
     return response.data.data;
