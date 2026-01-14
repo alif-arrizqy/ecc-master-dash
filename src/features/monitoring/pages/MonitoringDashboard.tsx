@@ -3,11 +3,11 @@
  * Halaman utama untuk monitoring site down dan site up
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MonitoringSummary } from '../components/MonitoringSummary';
 import { SiteDownTable } from '../components/SiteDownTable';
 import { SiteUpTable } from '../components/SiteUpTable';
-import { useSiteDown, useSiteUp, useSyncSiteDown, useSyncSiteUp } from '../hooks/useMonitoringQueries';
+import { useSiteDown, useSiteUp, useSyncSiteDown, useSyncSiteUp, useSLAMasterForMerge } from '../hooks/useMonitoringQueries';
 import { MonitoringFilters, SiteDownWithStatus } from '../types/monitoring.types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, RefreshCw, Activity } from 'lucide-react';
@@ -15,63 +15,29 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useToast } from '@/shared/hooks/use-toast';
 import { Loading } from '@/components/ui/loading';
-import { dummySummary, dummySiteDownData, dummySiteUpData, dummyPagination, dummySiteUpPagination } from '../data/dummyData';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-// Helper function untuk transform dummy site down data
-const transformDummySiteDown = (site: typeof dummySiteDownData[0]): SiteDownWithStatus => {
-  const formatDuration = (seconds: number): string => {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    if (days > 0) {
-      return `${days} hari ${hours} jam`;
-    } else if (hours > 0) {
-      return `${hours} jam ${minutes} menit`;
-    } else {
-      return `${minutes} menit`;
-    }
-  };
-
-  const getSiteDownStatus = (downSeconds: number): 'critical' | 'warning' | 'normal' => {
-    const days = downSeconds / 86400;
-    if (days > 30) return 'critical';
-    if (days > 7) return 'warning';
-    return 'normal';
-  };
-
-  const status = getSiteDownStatus(site.downSeconds);
-  const downSinceDate = new Date(site.downSince);
-  
-  return {
-    ...site,
-    status,
-    formattedDuration: formatDuration(site.downSeconds),
-    formattedDownSince: formatDistanceToNow(downSinceDate, {
-      addSuffix: true,
-      locale: id,
-    }),
-  };
-};
-
 export const MonitoringDashboard = () => {
   const { toast } = useToast();
-  const useDummyData = true; // Menggunakan dummy data untuk testing layout
+  const useDummyData = false; // Menggunakan real API data
   
   const [siteDownFilters, setSiteDownFilters] = useState<MonitoringFilters>({
     page: 1,
-    limit: 5,
+    limit: 80, // Fetch 80 data untuk client-side pagination (5 per page)
   });
   const [siteUpFilters, setSiteUpFilters] = useState<MonitoringFilters>({
     page: 1,
-    limit: 5,
+    limit: 80, // Fetch 80 data untuk client-side pagination (5 per page)
   });
 
   // Sync mutations
   const syncSiteDown = useSyncSiteDown();
   const syncSiteUp = useSyncSiteUp();
+
+  // Fetch SLA master data untuk merge dengan monitoring data
+  // useSLAMasterForMerge sudah mengembalikan Map<string, any> langsung
+  const { data: slaDataMap } = useSLAMasterForMerge();
 
   // Fetch site down data
   const {
@@ -79,7 +45,7 @@ export const MonitoringDashboard = () => {
     isLoading: isLoadingSiteDown,
     error: errorSiteDown,
     refetch: refetchSiteDown,
-  } = useSiteDown(siteDownFilters);
+  } = useSiteDown(siteDownFilters, slaDataMap);
 
   // Fetch site up data
   const {
@@ -87,39 +53,45 @@ export const MonitoringDashboard = () => {
     isLoading: isLoadingSiteUp,
     error: errorSiteUp,
     refetch: refetchSiteUp,
-  } = useSiteUp(siteUpFilters);
+  } = useSiteUp(siteUpFilters, slaDataMap);
 
-  // Use dummy data if enabled
-  const finalSiteDownData = useDummyData ? {
-    success: true,
-    data: dummySiteDownData.map(transformDummySiteDown),
-    pagination: dummyPagination,
-    summary: dummySummary,
-  } : siteDownData;
+  // Combine summary from both site-down and site-up responses
+  const combinedSummary = useMemo(() => {
+    const siteDownSummary = siteDownData?.summary;
+    const siteUpSummary = siteUpData?.summary;
+    
+    if (!siteDownSummary && !siteUpSummary) {
+      return undefined;
+    }
+    
+    return {
+      totalSites: siteDownSummary?.totalSites ?? siteUpSummary?.totalSites ?? 0,
+      totalSitesDown: siteDownSummary?.totalSitesDown,
+      totalSitesUp: siteUpSummary?.totalSitesUp,
+      percentageSitesDown: siteDownSummary?.percentageSitesDown,
+      percentageSitesUp: siteUpSummary?.percentageSitesUp,
+    };
+  }, [siteDownData?.summary, siteUpData?.summary]);
 
-  const finalSiteUpData = useDummyData ? {
-    success: true,
-    data: dummySiteUpData,
-    pagination: dummySiteUpPagination,
-    summary: dummySummary,
-  } : siteUpData;
-
-  // Handle sync button
+  // Handle sync button - POST to /sync then GET data
   const handleSync = async () => {
     try {
+      // Step 1: POST to sync endpoints
       await Promise.all([
         syncSiteDown.mutateAsync(),
         syncSiteUp.mutateAsync(),
+      ]);
+      
+      // Step 2: Refetch data after sync (GET endpoints)
+      await Promise.all([
+        refetchSiteDown(),
+        refetchSiteUp(),
       ]);
       
       toast({
         title: 'Sync Berhasil',
         description: 'Data monitoring berhasil di-sync dari NMS Semeru',
       });
-      
-      // Refetch data setelah sync
-      refetchSiteDown();
-      refetchSiteUp();
     } catch (error) {
       toast({
         title: 'Sync Gagal',
@@ -130,26 +102,30 @@ export const MonitoringDashboard = () => {
   };
 
   const handleSiteDownPageChange = (page: number) => {
-    setSiteDownFilters((prev) => ({ ...prev, page }));
+    // Client-side pagination, tidak perlu update filter
+    // Page change di-handle di component
   };
 
-  const handleSiteDownSiteIdFilter = (siteId: string) => {
+  const handleSiteDownSiteNameFilter = (siteName: string) => {
     setSiteDownFilters((prev) => ({
       ...prev,
-      siteId: siteId || undefined,
+      siteName: siteName || undefined,
       page: 1,
+      limit: 80, // Fetch 80 data untuk client-side pagination
     }));
   };
 
   const handleSiteUpPageChange = (page: number) => {
-    setSiteUpFilters((prev) => ({ ...prev, page }));
+    // Client-side pagination, tidak perlu update filter
+    // Page change di-handle di component
   };
 
-  const handleSiteUpSiteIdFilter = (siteId: string) => {
+  const handleSiteUpSiteNameFilter = (siteName: string) => {
     setSiteUpFilters((prev) => ({
       ...prev,
-      siteId: siteId || undefined,
+      siteName: siteName || undefined,
       page: 1,
+      limit: 80, // Fetch 80 data untuk client-side pagination
     }));
   };
 
@@ -184,7 +160,7 @@ export const MonitoringDashboard = () => {
                       Site Monitoring
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                      Monitoring status site down dan site up dari NMS Semeru
+                      Monitoring status site down dan site up dari <b className='text-green-600'>NMS Semeru</b>
                     </p>
                   </div>
                 </div>
@@ -207,10 +183,10 @@ export const MonitoringDashboard = () => {
             </div>
 
             {/* Summary Cards */}
-            {(finalSiteDownData?.summary || finalSiteUpData?.summary) && (
+            {combinedSummary && (
               <section className="mb-6">
                 <MonitoringSummary
-                  summary={finalSiteDownData?.summary || finalSiteUpData?.summary || dummySummary}
+                  summary={combinedSummary}
                   isLoading={isLoadingSiteDown || isLoadingSiteUp}
                 />
               </section>
@@ -220,20 +196,20 @@ export const MonitoringDashboard = () => {
             <section className="mb-6 space-y-6">
               {/* Site Down Section */}
                   <SiteDownTable
-                    data={finalSiteDownData?.data || []}
-                    pagination={finalSiteDownData?.pagination}
+                    data={siteDownData?.data || []}
+                    pagination={siteDownData?.pagination}
                     isLoading={isLoadingSiteDown && !useDummyData}
                     onPageChange={handleSiteDownPageChange}
-                    onSiteIdFilter={handleSiteDownSiteIdFilter}
+                    onSiteIdFilter={handleSiteDownSiteNameFilter}
                   />
 
               {/* Site Up Section */}
                   <SiteUpTable
-                    data={finalSiteUpData?.data || []}
-                    pagination={finalSiteUpData?.pagination}
+                    data={siteUpData?.data || []}
+                    pagination={siteUpData?.pagination}
                     isLoading={isLoadingSiteUp && !useDummyData}
                     onPageChange={handleSiteUpPageChange}
-                    onSiteIdFilter={handleSiteUpSiteIdFilter}
+                    onSiteIdFilter={handleSiteUpSiteNameFilter}
                   />
             </section>
           </>

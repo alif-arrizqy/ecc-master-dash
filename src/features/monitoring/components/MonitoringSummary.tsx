@@ -60,10 +60,12 @@ export const MonitoringSummary = ({ summary, isLoading }: MonitoringSummaryProps
         <CardContent>
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-destructive" />
-            <div className="text-3xl font-bold text-destructive">{summary.totalSitesDown}</div>
+            <div className="text-3xl font-bold text-destructive">{summary.totalSitesDown ?? 0}</div>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            {summary.percentageSitesDown.toFixed(1)}% dari total sites
+            {summary.percentageSitesDown != null 
+              ? `${summary.percentageSitesDown.toFixed(1)}% dari total sites`
+              : '-'}
           </p>
         </CardContent>
       </Card>
@@ -78,10 +80,12 @@ export const MonitoringSummary = ({ summary, isLoading }: MonitoringSummaryProps
         <CardContent>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <div className="text-3xl font-bold text-green-600">{summary.totalSitesUp}</div>
+            <div className="text-3xl font-bold text-green-600">{summary.totalSitesUp ?? 0}</div>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            {summary.percentageSitesUp.toFixed(1)}% dari total sites
+            {summary.percentageSitesUp != null 
+              ? `${summary.percentageSitesUp.toFixed(1)}% dari total sites`
+              : '-'}
           </p>
         </CardContent>
       </Card>
