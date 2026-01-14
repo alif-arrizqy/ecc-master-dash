@@ -6,8 +6,8 @@ export interface SiteDown {
   id: number;
   siteId: string;
   siteName: string;
-  downSince: string; // ISO 8601 date string
-  downSeconds: number;
+  downSince: string | null; // ISO 8601 date string, bisa null
+  downSeconds: number | null; // Bisa null
   slaAvg?: number;
   statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
   statusSP?: 'Potensi SP' | 'Clear SP';
@@ -67,8 +67,8 @@ export type SiteDownStatus = 'critical' | 'warning' | 'normal';
 
 export interface SiteDownWithStatus extends SiteDown {
   status: SiteDownStatus;
-  formattedDuration: string;
-  formattedDownSince: string;
+  formattedDuration: string; // '-' jika null
+  formattedDownSince: string; // '-' jika null
   slaAvg?: number;
   statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
   statusSP?: 'Potensi SP' | 'Clear SP';

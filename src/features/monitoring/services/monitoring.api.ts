@@ -3,7 +3,7 @@
  * Menggunakan monitoringApiClient dari shared/lib/api
  */
 
-import axios, { AxiosRequestConfig } from 'axios';
+import { monitoringApiClient } from '@/shared/lib/api';
 import { 
   SiteDownResponse, 
   SiteUpResponse, 
@@ -11,42 +11,6 @@ import {
   SiteDown,
   SiteUp
 } from '../types/monitoring.types';
-
-// Import monitoringApiClient dari shared lib
-// Untuk sementara kita import dari lib/api, nanti bisa dipindah ke shared
-const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
-
-const monitoringApiClient = axios.create({
-  baseURL: MONITORING_SERVICES_URL,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Response interceptor untuk monitoring API
-monitoringApiClient.interceptors.response.use(
-  (response) => {
-    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
-      if (!response.data.success) {
-        throw new Error('API returned unsuccessful response');
-      }
-    }
-    return response;
-  },
-  (error) => {
-    if (error.response) {
-      const status = error.response.status;
-      const message = error.response.data?.message || error.message;
-      console.error(`Monitoring API Error [${status}]:`, message);
-    } else if (error.request) {
-      console.error('Monitoring API Error: No response received', error.request);
-    } else {
-      console.error('Monitoring API Error:', error.message);
-    }
-    return Promise.reject(error);
-  }
-);
 
 /**
  * Monitoring API endpoints

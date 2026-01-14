@@ -104,14 +104,24 @@ export const SiteDownTable = ({
           aValue = (a.problem || []).length;
           bValue = (b.problem || []).length;
           break;
-        case 'downSince':
+        case 'downSince': {
+          // Handle null values: null dianggap lebih kecil
+          if (!a.downSince && !b.downSince) return 0;
+          if (!a.downSince) return 1;
+          if (!b.downSince) return -1;
           aValue = new Date(a.downSince).getTime();
           bValue = new Date(b.downSince).getTime();
           break;
-        case 'downSeconds':
+        }
+        case 'downSeconds': {
+          // Handle null values: null dianggap lebih kecil
+          if (a.downSeconds == null && b.downSeconds == null) return 0;
+          if (a.downSeconds == null) return 1;
+          if (b.downSeconds == null) return -1;
           aValue = a.downSeconds;
           bValue = b.downSeconds;
           break;
+        }
         case 'status': {
           const statusOrder = { critical: 3, warning: 2, normal: 1 };
           aValue = statusOrder[a.status];
@@ -396,12 +406,16 @@ export const SiteDownTable = ({
                           </span>
                         </td>
                         <td className="py-3 px-4 text-sm">
-                          <div className="flex flex-col">
-                            <span className="text-foreground">{site.formattedDownSince}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(site.downSince).toLocaleString('id-ID')}
-                            </span>
-                          </div>
+                          {site.downSince ? (
+                            <div className="flex flex-col">
+                              <span className="text-foreground">{site.formattedDownSince}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(site.downSince).toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-sm font-medium text-foreground">
                           {site.formattedDuration}
