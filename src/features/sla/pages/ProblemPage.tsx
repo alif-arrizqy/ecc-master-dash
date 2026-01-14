@@ -1,13 +1,13 @@
-import Navbar from '@/components/layout/Navbar';
+import Navbar from '@/shared/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Plus, Edit, Trash2, Search, Calendar, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
-import { slaApi } from '@/lib/api';
+import { slaApi } from '../services/sla.api';
 import { format } from 'date-fns';
-import { getProblemDateRange } from '@/lib/dateUtils';
+import { getProblemDateRange } from '@/shared/lib/dateUtils';
 import {
   Dialog,
   DialogContent,

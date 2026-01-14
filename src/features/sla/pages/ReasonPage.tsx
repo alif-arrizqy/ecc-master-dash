@@ -1,12 +1,13 @@
-import Navbar from '@/components/layout/Navbar';
+import Navbar from '@/shared/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Plus, Edit, Trash2, Search, Battery } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { slaApi, BatteryVersion } from '@/lib/api';
-import { getSLADateRange, getSLAMonthPeriod } from '@/lib/dateUtils';
+import { slaApi } from '../services/sla.api';
+import type { BatteryVersion } from '@/shared/lib/api';
+import { getSLADateRange } from '@/shared/lib/dateUtils';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +39,6 @@ interface ReasonWithBatteryVersion {
   batteryVersion: BatteryVersion;
   createdAt: string;
   updatedAt: string;
-  period?: string; // Period in YYYY-MM format
   batteryVersionId?: number; // ID of the battery-version relationship for deletion
 }
 
@@ -61,7 +61,6 @@ const ReasonPage = () => {
   });
   const queryClient = useQueryClient();
   const { startDate, endDate } = getSLADateRange();
-  const currentPeriod = getSLAMonthPeriod(); // Get current period (YYYY-MM)
 
   // Fetch all reasons (for dropdown)
   const { data: allReasonsData } = useQuery({
@@ -69,22 +68,22 @@ const ReasonPage = () => {
     queryFn: () => slaApi.getSLAReasons({ limit: 20 }),
   });
 
-  // Fetch reasons by battery version (using period for more efficient query)
+  // Fetch reasons by battery version
   const { data: talis5Reasons } = useQuery({
-    queryKey: ['sla-reasons', 'talis5', currentPeriod],
-    queryFn: () => slaApi.getSLAReasonsByBatteryVersion('talis5', { period: currentPeriod }),
+    queryKey: ['sla-reasons', 'talis5', startDate, endDate],
+    queryFn: () => slaApi.getSLAReasonsByBatteryVersion('talis5', { startDate, endDate }),
     enabled: selectedBatteryVersion === 'all' || selectedBatteryVersion === 'talis5',
   });
 
   const { data: mixReasons } = useQuery({
-    queryKey: ['sla-reasons', 'mix', currentPeriod],
-    queryFn: () => slaApi.getSLAReasonsByBatteryVersion('mix', { period: currentPeriod }),
+    queryKey: ['sla-reasons', 'mix', startDate, endDate],
+    queryFn: () => slaApi.getSLAReasonsByBatteryVersion('mix', { startDate, endDate }),
     enabled: selectedBatteryVersion === 'all' || selectedBatteryVersion === 'mix',
   });
 
   const { data: jsproReasons } = useQuery({
-    queryKey: ['sla-reasons', 'jspro', currentPeriod],
-    queryFn: () => slaApi.getSLAReasonsByBatteryVersion('jspro', { period: currentPeriod }),
+    queryKey: ['sla-reasons', 'jspro', startDate, endDate],
+    queryFn: () => slaApi.getSLAReasonsByBatteryVersion('jspro', { startDate, endDate }),
     enabled: selectedBatteryVersion === 'all' || selectedBatteryVersion === 'jspro',
   });
 
@@ -92,17 +91,17 @@ const ReasonPage = () => {
   const allReasonsWithBattery: ReasonWithBatteryVersion[] = [];
   if (talis5Reasons && Array.isArray(talis5Reasons)) {
     talis5Reasons.forEach((reason) => {
-      allReasonsWithBattery.push({ ...reason, batteryVersion: 'talis5', period: currentPeriod });
+      allReasonsWithBattery.push({ ...reason, batteryVersion: 'talis5' });
     });
   }
   if (mixReasons && Array.isArray(mixReasons)) {
     mixReasons.forEach((reason) => {
-      allReasonsWithBattery.push({ ...reason, batteryVersion: 'mix', period: currentPeriod });
+      allReasonsWithBattery.push({ ...reason, batteryVersion: 'mix' });
     });
   }
   if (jsproReasons && Array.isArray(jsproReasons)) {
     jsproReasons.forEach((reason) => {
-      allReasonsWithBattery.push({ ...reason, batteryVersion: 'jspro', period: currentPeriod });
+      allReasonsWithBattery.push({ ...reason, batteryVersion: 'jspro' });
     });
   }
 
@@ -210,11 +209,10 @@ const ReasonPage = () => {
         toast.error('Pilih reason yang sudah ada');
         return;
       }
-      // Link existing reason to battery version (period will default to current month on backend)
+      // Link existing reason to battery version
       linkToBatteryVersionMutation.mutate({
         batteryVersion: formData.batteryVersion,
         reasonId: formData.existingReasonId,
-        period: currentPeriod, // Explicitly set period to current month
       });
     } else {
       if (!formData.reason.trim()) {
@@ -231,7 +229,6 @@ const ReasonPage = () => {
           linkToBatteryVersionMutation.mutate({
             batteryVersion: formData.batteryVersion,
             reasonId: reasonId,
-            period: currentPeriod, // Explicitly set period to current month
           });
         } else {
           toast.error('Gagal mendapatkan ID reason yang baru dibuat');
@@ -283,7 +280,6 @@ const ReasonPage = () => {
                 </h1>
                 <p className="text-muted-foreground mt-1">
                   Alasan kenapa SLA kurang dari 95.5% berdasarkan battery version
-                  <span className="ml-2 text-xs">(Periode: {currentPeriod})</span>
                 </p>
               </div>
             </div>
@@ -487,7 +483,7 @@ const ReasonPage = () => {
                         <TableHead>ID</TableHead>
                         <TableHead>Battery Version</TableHead>
                         <TableHead>Reason</TableHead>
-                        <TableHead>Period</TableHead>
+                        <TableHead>Created At</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -508,11 +504,7 @@ const ReasonPage = () => {
                               </Badge>
                             </TableCell>
                             <TableCell className="max-w-md">{item.reason}</TableCell>
-                            <TableCell>
-                              <Badge variant="secondary">
-                                {item.period || currentPeriod}
-                              </Badge>
-                            </TableCell>
+                            <TableCell>{new Date(item.createdAt).toLocaleDateString('id-ID')}</TableCell>
                             <TableCell>
                               <div className="flex gap-2">
                                 <Button
@@ -544,7 +536,7 @@ const ReasonPage = () => {
                         <TableRow>
                           <TableHead>ID</TableHead>
                           <TableHead>Reason</TableHead>
-                          <TableHead>Period</TableHead>
+                          <TableHead>Created At</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -560,11 +552,7 @@ const ReasonPage = () => {
                             <TableRow key={`${item.id}-${item.batteryVersion}`}>
                               <TableCell>{item.id}</TableCell>
                               <TableCell className="max-w-md">{item.reason}</TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">
-                                  {item.period || currentPeriod}
-                                </Badge>
-                              </TableCell>
+                              <TableCell>{new Date(item.createdAt).toLocaleDateString('id-ID')}</TableCell>
                               <TableCell>
                                 <div className="flex gap-2">
                                   <Button

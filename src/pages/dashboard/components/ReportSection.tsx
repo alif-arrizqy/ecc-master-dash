@@ -66,33 +66,64 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
       section += `SLA Average: ${sla.toFixed(2)}%\n\n`;
 
       // Down SLA (SLA = 0%)
+      // Filter: hanya tampilkan site dengan SLA <= 95% (biasanya downSla adalah 0%, tapi filter untuk konsistensi)
       if (batteryData.downSla && batteryData.downSla.length > 0) {
-        section += `⚠️ SITE DENGAN SLA = 0% (DOWN) - Total: ${batteryData.downSla.length} site:\n`;
-        batteryData.downSla.forEach(site => {
-          section += `  • ${site.site} - ${site.downtime || ''} - ${site.problem || ''}\n`;
+        const filteredDownSla = batteryData.downSla.filter(site => {
+          const sla = typeof site.sla === 'number' ? site.sla : 0;
+          return sla <= 95;
         });
-        section += `\n`;
+        
+        if (filteredDownSla.length > 0) {
+          section += `⚠️ SITE DENGAN SLA = 0% (DOWN) - Total: ${filteredDownSla.length} site:\n`;
+          filteredDownSla.forEach(site => {
+            // section += `  • ${site.site} - ${site.downtime || ''} - ${site.problem || ''}\n`;
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} - ${site.downtime || ''}${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Under SLA (< 95.5%)
+      // Filter: hanya tampilkan site dengan SLA <= 95%
       if (batteryData.underSla && batteryData.underSla.length > 0) {
-        section += `⚠️ SITE DENGAN SLA < 95.5% - Total: ${batteryData.underSla.length} site:\n`;
-        batteryData.underSla.forEach(site => {
-          const slaValue = typeof site.sla === 'number' ? site.sla.toFixed(2) : 'N/A';
-          section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''}) - ${site.problem || ''}\n`;
+        const filteredUnderSla = batteryData.underSla.filter(site => {
+          const sla = typeof site.sla === 'number' ? site.sla : 0;
+          return sla <= 95;
         });
-        section += `\n`;
+        
+        if (filteredUnderSla.length > 0) {
+          section += `⚠️ SITE DENGAN SLA < 95.5% - Total: ${filteredUnderSla.length} site:\n`;
+          filteredUnderSla.forEach(site => {
+            const slaValue = typeof site.sla === 'number' ? site.sla.toFixed(2) : 'N/A';
+            // section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''}) - ${site.problem || ''}\n`;
+            // jika ada problem, gunakan '-' jika tidak, jangan ada '-'
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} - ${slaValue}% (${site.downtime || ''})${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Drop SLA
+      // Filter: hanya tampilkan site dengan slaNow <= 95%
       if (batteryData.dropSla && batteryData.dropSla.length > 0) {
-        section += `📉 PENURUNAN SLA - Total: ${batteryData.dropSla.length} site:\n`;
-        batteryData.dropSla.forEach(site => {
-          const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
-          const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
-          section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''} - ${site.problem || ''}\n`;
+        const filteredDropSla = batteryData.dropSla.filter(site => {
+          const slaNow = typeof site.slaNow === 'number' ? site.slaNow : 0;
+          return slaNow <= 95;
         });
-        section += `\n`;
+        
+        if (filteredDropSla.length > 0) {
+          section += `📉 PENURUNAN SLA - Total: ${filteredDropSla.length} site:\n`;
+          filteredDropSla.forEach(site => {
+            const slaBefore = typeof site.slaBefore === 'number' ? site.slaBefore.toFixed(2) : 'N/A';
+            const slaNow = typeof site.slaNow === 'number' ? site.slaNow.toFixed(2) : 'N/A';
+            // section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''} - ${site.problem || ''}\n`;
+            const problem = site.problem ? ` - ${site.problem}` : '';
+            section += `  • ${site.site} (${slaBefore}% → ${slaNow}%) - ${site.downtime || ''}${problem}\n`;
+          });
+          section += `\n`;
+        }
       }
 
       // Up SLA
@@ -282,20 +313,153 @@ const ReportSection = ({ reportData, gamasHistory = [], potensiSPSites = [] }: R
     return reportText;
   };
   
-  const handleCopy = async () => {
-    const reportText = generateReportText();
+  // Helper: Menampilkan success notification dan update state
+  const showCopySuccess = (method: string) => {
+    console.log(`✅ Berhasil menyalin laporan menggunakan metode: ${method}`);
+    setCopied(true);
+    toast.success('Laporan berhasil disalin!', {
+      description: 'Anda dapat paste laporan ini'
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Helper: Membuat hidden textarea untuk copy
+  const createHiddenTextarea = (text: string): HTMLTextAreaElement => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.setAttribute('aria-hidden', 'true');
+    
+    Object.assign(textArea.style, {
+      position: 'fixed',
+      top: '-9999px',
+      left: '-9999px',
+      opacity: '0',
+      pointerEvents: 'none',
+    });
+    
+    return textArea;
+  };
+
+  // Helper: Select text dengan kompatibilitas iOS
+  const selectText = (textArea: HTMLTextAreaElement) => {
+    const isIOS = /ipad|iphone/i.test(navigator.userAgent);
+    
+    if (isIOS) {
+      const range = document.createRange();
+      range.selectNodeContents(textArea);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      textArea.setSelectionRange(0, 999999);
+    } else {
+      textArea.select();
+      textArea.setSelectionRange(0, 999999);
+    }
+  };
+
+  // Helper: Copy menggunakan Clipboard API (HTTPS)
+  const copyWithClipboardAPI = async (text: string): Promise<boolean> => {
+    if (!navigator.clipboard || !window.isSecureContext) {
+      console.log('⚠️ Clipboard API tidak tersedia (tidak secure context atau browser tidak support)');
+      return false;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      console.log('✅ Clipboard API berhasil menyalin teks');
+      return true;
+    } catch (err) {
+      console.error('❌ Clipboard API error:', err);
+      return false;
+    }
+  };
+
+  // Helper: Copy menggunakan execCommand (HTTP fallback)
+  const copyWithExecCommand = (text: string): boolean => {
+    const textArea = createHiddenTextarea(text);
+    document.body.appendChild(textArea);
     
     try {
-      await navigator.clipboard.writeText(reportText);
-      setCopied(true);
-      toast.success('Laporan berhasil disalin!', {
-        description: 'Anda dapat paste laporan ini'
-      });
+      selectText(textArea);
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
       
-      setTimeout(() => setCopied(false), 2000);
+      if (successful) {
+        console.log('✅ execCommand berhasil menyalin teks');
+      } else {
+        console.warn('⚠️ execCommand mengembalikan false');
+      }
+      return successful;
     } catch (err) {
-      toast.error('Gagal menyalin laporan');
+      document.body.removeChild(textArea);
+      console.error('❌ execCommand error:', err);
+      return false;
     }
+  };
+
+  // Helper: Fallback manual - tampilkan textarea untuk user copy manual
+  const showManualCopyFallback = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    
+    Object.assign(textArea.style, {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: '80%',
+      height: '200px',
+      zIndex: '9999',
+      border: '2px solid #ccc',
+      padding: '10px',
+      fontSize: '14px',
+      backgroundColor: '#fff',
+    });
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    toast.error('Salin manual diperlukan', {
+      description: 'Teks telah dipilih, tekan Ctrl+C (Cmd+C di Mac) untuk menyalin',
+      duration: 5000
+    });
+    
+    setTimeout(() => {
+      if (document.body.contains(textArea)) {
+        document.body.removeChild(textArea);
+      }
+    }, 5000);
+  };
+
+  // Main handler: Mencoba berbagai metode copy secara berurutan
+  const handleCopy = async () => {
+    const reportText = generateReportText();
+    console.log('📋 Memulai proses menyalin laporan...', {
+      textLength: reportText.length,
+      isSecureContext: window.isSecureContext,
+      clipboardAvailable: !!navigator.clipboard
+    });
+    
+    // Method 1: Clipboard API (HTTPS)
+    if (await copyWithClipboardAPI(reportText)) {
+      showCopySuccess('Clipboard API');
+      return;
+    }
+    
+    // Method 2: execCommand (HTTP fallback)
+    if (copyWithExecCommand(reportText)) {
+      showCopySuccess('execCommand');
+      return;
+    }
+    
+    // Method 3: Manual fallback
+    console.error('❌ Semua metode copy gagal, menggunakan fallback manual');
+    showManualCopyFallback(reportText);
+    toast.error('Gagal menyalin laporan', {
+      description: 'Mohon salin manual dari teks di bawah ini'
+    });
   };
   
   return (
