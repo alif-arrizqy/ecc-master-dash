@@ -21,9 +21,9 @@ import {
   useGAMASHistory,
   useSLAReportDetail,
 } from '../hooks/useDashboardQueries';
-import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getSLADashboardDateRange } from '@/lib/dateUtils';
+import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getSLADashboardDateRange } from '@/shared/lib/dateUtils';
 import WeeklyTrendChart from '../components/dashboard/WeeklyTrendChart';
-import { SLAReportDetail } from '@/types/api';
+import { SLAReportDetail } from '@/shared/types/api';
 
 const Dashboard = () => {
   // Hook untuk refresh cache
