@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { picTypes, Site, Problem } from '@/data/mockData';
-import { cn } from '@/lib/utils';
-import { getSLADateRange } from '@/lib/dateUtils';
+import { cn } from '@/shared/lib/utils';
+import { getSLADateRange } from '@/shared/lib/dateUtils';
 import { format } from 'date-fns';
 import { slaApi } from '../../services/sla.api';
 import SiteDetailModal from './SiteDetailModal';

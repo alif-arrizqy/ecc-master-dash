@@ -1,4 +1,4 @@
-import Navbar from '@/components/layout/Navbar';
+import Navbar from '@/shared/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Plus, Edit, Trash2, Search, Battery } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { slaApi } from '../services/sla.api';
-import type { BatteryVersion } from '@/lib/api';
-import { getSLADateRange } from '@/lib/dateUtils';
+import type { BatteryVersion } from '@/shared/lib/api';
+import { getSLADateRange } from '@/shared/lib/dateUtils';
 import {
   Dialog,
   DialogContent,

@@ -3,7 +3,7 @@ import { Upload, FileSpreadsheet, X, Check, Loader2, AlertCircle, Info, ChevronD
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';

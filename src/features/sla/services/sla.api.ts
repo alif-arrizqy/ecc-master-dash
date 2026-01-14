@@ -3,8 +3,8 @@
  * API methods khusus untuk SLA module (SLA Bakti)
  */
 
-import { slaApiClient } from '@/lib/api';
-import type { BatteryVersion } from '@/lib/api';
+import { slaApiClient } from '@/shared/lib/api';
+import type { BatteryVersion } from '@/shared/lib/api';
 import type { AxiosRequestConfig } from 'axios';
 
 interface ApiResponse<T> {
