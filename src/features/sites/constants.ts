@@ -2,7 +2,7 @@
  * Constants for Sites Management
  */
 
-import { BatteryVersion } from '@/lib/api';
+import type { BatteryVersion } from '@/shared/lib/api';
 
 export const PROVINCES = [
   'MALUKU',

@@ -8,8 +8,8 @@ export { default as SitesPage } from './SitesPage';
 // Hooks
 export * from './hooks';
 
-// Services
-export { sitesApi } from './services/sites.api';
+// Services (sitesApi sekarang di shared/lib/api.ts)
+export { sitesApi } from '@/shared/lib/api';
 
 // Types
 export * from './types';
