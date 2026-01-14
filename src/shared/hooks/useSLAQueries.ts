@@ -15,7 +15,7 @@ import {
   SiteMaster,
   PotensiSPSitesResponse,
 } from '@/types/api';
-import { DailySLA, WeeklySLA } from '@/data/mockData';
+import { DailySLA, WeeklySLA } from '@/shared/data/mockData';
 
 /**
  * Transform API date-value format to chart day-sla format
