@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { Battery, BatteryCharging, Zap, LayoutGrid } from "lucide-react";
 
 interface SummaryCardProps {

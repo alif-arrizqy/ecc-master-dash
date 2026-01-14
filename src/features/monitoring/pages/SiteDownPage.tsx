@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import Navbar from '@/components/layout/Navbar';
+import Navbar from '@/shared/components/layout/Navbar';
 import { MonitoringSummary } from '../components/MonitoringSummary';
 import { SiteDownTable } from '../components/SiteDownTable';
 import { useSiteDown } from '../hooks/useMonitoringQueries';
