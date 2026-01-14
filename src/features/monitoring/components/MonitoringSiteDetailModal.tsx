@@ -157,12 +157,18 @@ const MonitoringSiteDetailModal = ({ site, type, onClose }: MonitoringSiteDetail
                   <>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Down Since</p>
-                      <p className="text-sm font-medium text-foreground">
-                        {format(new Date(siteDown.downSince), 'dd MMM yyyy, HH:mm')}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {siteDown.formattedDownSince}
-                      </p>
+                      {siteDown.downSince ? (
+                        <>
+                          <p className="text-sm font-medium text-foreground">
+                            {format(new Date(siteDown.downSince), 'dd MMM yyyy, HH:mm')}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {siteDown.formattedDownSince}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-medium text-muted-foreground">-</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Last Updated</p>

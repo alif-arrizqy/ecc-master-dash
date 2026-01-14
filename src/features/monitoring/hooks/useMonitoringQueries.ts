@@ -68,14 +68,37 @@ const getSLAStatus = (slaAvg: number | undefined): 'Meet SLA' | 'Fair' | 'Bad' |
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const transformSiteDown = (site: any, slaDataMap?: Map<string, any>): SiteDownWithStatus => {
-  const downSinceDate = new Date(site.downSince);
-  const now = new Date();
+  // Handle null downSince dan downSeconds
+  const hasDownSince = site.downSince != null && site.downSince !== '';
+  const hasDownSeconds = site.downSeconds != null;
   
-  // Hitung duration REAL-TIME: waktu sekarang - downSince (dalam detik)
-  const durationInSeconds = Math.floor((now.getTime() - downSinceDate.getTime()) / 1000);
+  let durationInSeconds = 0;
+  let status: 'critical' | 'warning' | 'normal' = 'normal';
+  let formattedDuration = '-';
+  let formattedDownSince = '-';
   
-  // Gunakan duration yang dihitung real-time untuk status
-  const status = getSiteDownStatus(durationInSeconds);
+  if (hasDownSince) {
+    const downSinceDate = new Date(site.downSince);
+    const now = new Date();
+    
+    // Hitung duration REAL-TIME: waktu sekarang - downSince (dalam detik)
+    durationInSeconds = Math.floor((now.getTime() - downSinceDate.getTime()) / 1000);
+    
+    // Gunakan duration yang dihitung real-time untuk status
+    status = getSiteDownStatus(durationInSeconds);
+    
+    // Format duration dan downSince
+    formattedDuration = formatDuration(durationInSeconds);
+    formattedDownSince = formatDistanceToNow(downSinceDate, {
+      addSuffix: true,
+      locale: id,
+    });
+  } else if (hasDownSeconds) {
+    // Jika hanya ada downSeconds tapi tidak ada downSince, gunakan downSeconds dari API
+    durationInSeconds = site.downSeconds;
+    status = getSiteDownStatus(durationInSeconds);
+    formattedDuration = formatDuration(durationInSeconds);
+  }
   
   // Get SLA data for this site berdasarkan site_id
   const slaData = slaDataMap?.get(site.siteId);
@@ -109,14 +132,11 @@ const transformSiteDown = (site: any, slaDataMap?: Map<string, any>): SiteDownWi
   return {
     ...site,
     status,
-    // Duration dihitung REAL-TIME dari downSince sampai sekarang
-    formattedDuration: formatDuration(durationInSeconds),
-    formattedDownSince: formatDistanceToNow(downSinceDate, {
-      addSuffix: true,
-      locale: id,
-    }),
-    // Update downSeconds dengan nilai yang dihitung real-time
-    downSeconds: durationInSeconds,
+    // Duration dan downSince: '-' jika null
+    formattedDuration,
+    formattedDownSince,
+    // Update downSeconds dengan nilai yang dihitung real-time atau dari API
+    downSeconds: hasDownSince ? durationInSeconds : (site.downSeconds ?? null),
     // Merge SLA data: slaAvg, statusSLA, statusSP, problem
     slaAvg,
     statusSLA,
