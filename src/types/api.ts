@@ -111,7 +111,7 @@ export interface SiteSLADetail {
   downtime: string;
   problem: string;
   site: string;
-  battery_version: string;
+  batteryVersion: BatteryVersion;
   slaBefore?: number;
   slaNow?: number;
 }
@@ -134,6 +134,42 @@ export interface BatteryVersionReportDetail {
 }
 
 /**
+ * Site SLA Detail for slaBelow95
+ */
+export interface SlaBelow95SiteItem {
+  sla: number;
+  site: string;
+  downtime: string;
+  problem: string | null;
+  batteryVersion: BatteryVersion;
+  statusSP: "Potensi SP" | "Clear SP";
+}
+
+/**
+ * Battery Version Detail for slaBelow95
+ */
+export interface SlaBelow95BatteryVersionDetail {
+  name: string;
+  totalSites: number;
+  sites: SlaBelow95SiteItem[];
+}
+
+/**
+ * SLA Below 95.5% Section
+ */
+export interface SlaBelow95Section {
+  message: string;
+  totalSites: number;
+  detail: {
+    batteryVersion: {
+      talis5: SlaBelow95BatteryVersionDetail;
+      mix: SlaBelow95BatteryVersionDetail;
+      jspro: SlaBelow95BatteryVersionDetail;
+    };
+  };
+}
+
+/**
  * SLA Report Detail Response
  */
 export interface SLAReportDetail {
@@ -153,12 +189,13 @@ export interface SLAReportDetail {
       };
     };
   };
+  slaBelow95: SlaBelow95Section;
 }
 
 /**
- * Site SLA Detail (for Potensi SP)
+ * Site SLA Detail (for Master/Potensi SP - legacy)
  */
-export interface SiteSLADetail {
+export interface SiteSLADetailMaster {
   slaAverage: number;
   slaUnit: string;
   slaStatus: string;
@@ -184,7 +221,7 @@ export interface SiteMaster {
   battery_version?: string;
   talisInstalled?: string | null;
   problem?: unknown[];
-  siteSla?: SiteSLADetail;
+  siteSla?: SiteSLADetailMaster;
   // Legacy fields for backward compatibility
   slaAvg?: number;
   sla_avg?: number;

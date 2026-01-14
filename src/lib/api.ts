@@ -8,6 +8,7 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 // Get environment variables with fallback defaults for development
 const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL;
 const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL;
+const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
   console.warn('VITE_SLA_SERVICES_URL is not set.');
@@ -46,6 +47,17 @@ export const slaApiClient: AxiosInstance = axios.create({
  */
 export const sitesApiClient: AxiosInstance = axios.create({
   baseURL: SITES_SERVICES_URL,
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Create axios instance for Monitoring Services
+ */
+export const monitoringApiClient: AxiosInstance = axios.create({
+  baseURL: MONITORING_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -403,7 +415,7 @@ export const slaApi = {
 
   /**
    * Get detailed SLA report
-   * GET /api/v1/sla-bakti/report
+   * GET /api/v1/sla-bakti/daily/report
    */
   getSLAReportDetail: async (params: {
     startDate: string;
@@ -1105,6 +1117,70 @@ export const slaApi = {
         bySccType: Record<string, number>;
       };
     }>('/api/v1/sites/statistics');
+  },
+
+  /**
+   * Refresh/Reset Redis cache by date range
+   * POST /api/v1/cache/refresh
+   */
+  refreshCache: async (params?: { startDate?: string; endDate?: string }) => {
+    const response = await slaApiClient.post<ApiResponse<{
+      message: string;
+      startDate: string;
+      endDate: string;
+    }>>('/api/v1/cache/refresh', params || {});
+    return response.data.data;
+  },
+};
+
+/**
+ * Monitoring Services API
+ */
+export const monitoringApi = {
+  /**
+   * Get all site downtime data
+   * GET /api/v1/site-down
+   */
+  getSiteDowntime: async (params?: {
+    page?: number;
+    limit?: number;
+    siteId?: string;
+  }) => {
+    return monitoringApiClient.get<ApiResponse<{
+      data: Array<{
+        id: number;
+        siteId: string;
+        siteName: string | null;
+        downSince: string;
+        downSeconds: number | null;
+        createdAt: string;
+        updatedAt: string;
+      }>;
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>>('/api/v1/site-down', {
+      params,
+    });
+  },
+
+  /**
+   * Get site downtime by Site ID
+   * GET /api/v1/site-down/:siteId
+   */
+  getSiteDowntimeBySiteId: async (siteId: string) => {
+    return monitoringApiClient.get<ApiResponse<{
+      id: number;
+      siteId: string;
+      siteName: string | null;
+      downSince: string;
+      downSeconds: number | null;
+      createdAt: string;
+      updatedAt: string;
+    }>>(`/api/v1/site-down/${siteId}`);
   },
 };
 
