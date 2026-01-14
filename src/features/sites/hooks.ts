@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { sitesApi } from './services/sites.api';
+import { sitesApi } from '@/shared/lib/api';
 import { Site, SiteFormData, SiteQueryParams, SiteStatistics } from './types';
 import { ITEMS_PER_PAGE } from './constants';
 
