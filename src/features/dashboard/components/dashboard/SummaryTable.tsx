@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { MonthlyReportSummary } from "@/types/api";
 
 interface SummaryTableProps {

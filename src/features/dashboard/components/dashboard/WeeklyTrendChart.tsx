@@ -1,5 +1,5 @@
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { WeeklySLA } from '@/data/mockData';
+import { WeeklySLA } from '@/shared/data/mockData';
 
 interface WeeklyTrendChartProps {
   data: WeeklySLA[];

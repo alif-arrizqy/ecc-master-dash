@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { slaApi } from '@/lib/api';
+import { sitesApi } from '@/shared/lib/api';
 import { Site, SiteFormData, SiteQueryParams, SiteStatistics } from './types';
 import { ITEMS_PER_PAGE } from './constants';
 
@@ -14,7 +14,7 @@ import { ITEMS_PER_PAGE } from './constants';
 export const useSitesQuery = (params: SiteQueryParams) => {
   return useQuery({
     queryKey: ['sites', params],
-    queryFn: () => slaApi.getSites(params),
+    queryFn: () => sitesApi.getSites(params),
   });
 };
 
@@ -25,7 +25,7 @@ export const useCreateSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: SiteFormData) => slaApi.createSite(data),
+    mutationFn: (data: SiteFormData) => sitesApi.createSite(data),
     onSuccess: () => {
       toast.success('Site berhasil dibuat');
       queryClient.invalidateQueries({ queryKey: ['sites'] });
@@ -46,7 +46,7 @@ export const useUpdateSite = () => {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string | number; data: SiteFormData | Partial<Site> }) =>
-      slaApi.updateSite(id, data),
+      sitesApi.updateSite(id, data),
     onSuccess: (_, variables) => {
       // Check if this is an activate/deactivate action
       if (typeof variables.data === 'object' && variables.data !== null && 'isActive' in variables.data) {
@@ -72,7 +72,7 @@ export const useDeleteSite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, hard }: { id: string | number; hard?: boolean }) => slaApi.deleteSite(id, hard),
+    mutationFn: ({ id, hard }: { id: string | number; hard?: boolean }) => sitesApi.deleteSite(id, hard),
     onSuccess: (_, variables) => {
       toast.success(variables.hard ? 'Site berhasil dihapus permanen' : 'Site berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['sites'] });
@@ -91,7 +91,7 @@ export const useDeleteSite = () => {
 export const useSiteStatistics = () => {
   return useQuery({
     queryKey: ['sites', 'statistics'],
-    queryFn: () => slaApi.getSiteStatistics(),
+    queryFn: () => sitesApi.getSiteStatistics(),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

@@ -4,8 +4,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { slaApi } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
-import { getSLADashboardDateRange } from '@/lib/dateUtils';
+import { useToast } from '@/shared/hooks/use-toast';
+import { getSLADashboardDateRange } from '@/shared/lib/dateUtils';
 
 export function useRefreshCache() {
   const queryClient = useQueryClient();

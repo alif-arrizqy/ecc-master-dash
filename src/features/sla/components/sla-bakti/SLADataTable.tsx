@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { picTypes, Site, Problem } from '@/data/mockData';
+import { picTypes, Site, Problem } from '@/shared/data/mockData';
 import { cn } from '@/shared/lib/utils';
 import { getSLADateRange } from '@/shared/lib/dateUtils';
 import { format } from 'date-fns';
