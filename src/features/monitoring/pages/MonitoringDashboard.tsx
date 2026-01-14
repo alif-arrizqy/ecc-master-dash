@@ -149,7 +149,7 @@ export const MonitoringDashboard = () => {
         ) : (
           <>
             {/* Page Header */}
-            <div className="mb-8">
+            <div className="mb-8 animate-fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
@@ -184,7 +184,7 @@ export const MonitoringDashboard = () => {
 
             {/* Summary Cards */}
             {combinedSummary && (
-              <section className="mb-6">
+              <section className="mb-6 animate-slide-up">
                 <MonitoringSummary
                   summary={combinedSummary}
                   isLoading={isLoadingSiteDown || isLoadingSiteUp}
@@ -195,22 +195,26 @@ export const MonitoringDashboard = () => {
             {/* Tables: Site Down (Top) dan Site Up (Bottom) */}
             <section className="mb-6 space-y-6">
               {/* Site Down Section */}
-                  <SiteDownTable
-                    data={siteDownData?.data || []}
-                    pagination={siteDownData?.pagination}
-                    isLoading={isLoadingSiteDown && !useDummyData}
-                    onPageChange={handleSiteDownPageChange}
-                    onSiteIdFilter={handleSiteDownSiteNameFilter}
-                  />
+              <div className="animate-slide-up">
+                <SiteDownTable
+                  data={siteDownData?.data || []}
+                  pagination={siteDownData?.pagination}
+                  isLoading={isLoadingSiteDown && !useDummyData}
+                  onPageChange={handleSiteDownPageChange}
+                  onSiteIdFilter={handleSiteDownSiteNameFilter}
+                />
+              </div>
 
               {/* Site Up Section */}
-                  <SiteUpTable
-                    data={siteUpData?.data || []}
-                    pagination={siteUpData?.pagination}
-                    isLoading={isLoadingSiteUp && !useDummyData}
-                    onPageChange={handleSiteUpPageChange}
-                    onSiteIdFilter={handleSiteUpSiteNameFilter}
-                  />
+              <div className="animate-slide-up">
+                <SiteUpTable
+                  data={siteUpData?.data || []}
+                  pagination={siteUpData?.pagination}
+                  isLoading={isLoadingSiteUp && !useDummyData}
+                  onPageChange={handleSiteUpPageChange}
+                  onSiteIdFilter={handleSiteUpSiteNameFilter}
+                />
+              </div>
             </section>
           </>
         )}
