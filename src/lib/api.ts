@@ -56,7 +56,7 @@ export const sitesApiClient: AxiosInstance = axios.create({
 /**
  * Create axios instance for Monitoring Services
  */
-const monitoringApiClient: AxiosInstance = axios.create({
+export const monitoringApiClient: AxiosInstance = axios.create({
   baseURL: MONITORING_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
@@ -415,7 +415,7 @@ export const slaApi = {
 
   /**
    * Get detailed SLA report
-   * GET /api/v1/sla-bakti/report
+   * GET /api/v1/sla-bakti/daily/report
    */
   getSLAReportDetail: async (params: {
     startDate: string;
