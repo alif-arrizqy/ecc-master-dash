@@ -24,11 +24,8 @@ const Navbar = () => {
     {
       label: 'Monitoring',
       icon: Activity,
-      hasChildren: true,
-      children: [
-        { to: '/monitoring/x', label: 'Menu X' },
-        { to: '/monitoring/y', label: 'Menu Y' },
-      ]
+      hasChildren: false,
+      to: '/monitoring'
     },
     {
       label: 'Sites',

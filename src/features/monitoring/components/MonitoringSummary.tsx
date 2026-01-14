@@ -6,7 +6,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2, Activity } from 'lucide-react';
 import { MonitoringSummary as MonitoringSummaryType } from '../types/monitoring.types';
-import { cn } from '@/shared/lib/utils';
 
 interface MonitoringSummaryProps {
   summary: MonitoringSummaryType;
@@ -19,8 +18,10 @@ export const MonitoringSummary = ({ summary, isLoading }: MonitoringSummaryProps
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-4 bg-muted rounded w-24"></div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                <div className="h-4 bg-muted rounded w-24"></div>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-8 bg-muted rounded w-16"></div>
@@ -35,27 +36,33 @@ export const MonitoringSummary = ({ summary, isLoading }: MonitoringSummaryProps
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* Total Sites */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Sites</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            Total Sites
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{summary.totalSites}</div>
-          <p className="text-xs text-muted-foreground">Semua site aktif</p>
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            <div className="text-3xl font-bold">{summary.totalSites}</div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Semua site aktif</p>
         </CardContent>
       </Card>
 
       {/* Sites Down */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Sites Down</CardTitle>
-          <AlertCircle className="h-4 w-4 text-destructive" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            Sites Down
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-destructive">
-            {summary.totalSitesDown}
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <div className="text-3xl font-bold text-destructive">{summary.totalSitesDown}</div>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground mt-2">
             {summary.percentageSitesDown.toFixed(1)}% dari total sites
           </p>
         </CardContent>
@@ -63,15 +70,17 @@ export const MonitoringSummary = ({ summary, isLoading }: MonitoringSummaryProps
 
       {/* Sites Up */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Sites Up</CardTitle>
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            Sites Up
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">
-            {summary.totalSitesUp}
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <div className="text-3xl font-bold text-green-600">{summary.totalSitesUp}</div>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground mt-2">
             {summary.percentageSitesUp.toFixed(1)}% dari total sites
           </p>
         </CardContent>

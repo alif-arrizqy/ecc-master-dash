@@ -63,17 +63,6 @@ const App = () => (
               </Suspense>
             } 
           />
-          <Route 
-            path="/monitoring/site-down" 
-            element={
-              <Suspense fallback={<Loading text="Memuat halaman site down..." />}>
-                <SiteDownPage />
-              </Suspense>
-            } 
-          />
-          <Route path="/monitoring/x" element={<UnderDevelopment title="Menu X" description="Halaman monitoring menu X" />} />
-          <Route path="/monitoring/y" element={<UnderDevelopment title="Menu Y" description="Halaman monitoring menu Y" />} />
-          
           {/* SLA Bakti Routes */}
           <Route 
             path="/sla-bakti/upload" 

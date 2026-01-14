@@ -1,40 +1,39 @@
 /**
- * Site Down Table Component
- * Menampilkan tabel site down dengan sorting, filtering, dan pagination
+ * Site Up Table Component
+ * Menampilkan tabel site up dengan sorting, filtering, dan pagination
  */
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SiteDownWithStatus, MonitoringPagination } from '../types/monitoring.types';
-import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { SiteUp, MonitoringPagination } from '../types/monitoring.types';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useState, useMemo, useEffect } from 'react';
 import MonitoringSiteDetailModal from './MonitoringSiteDetailModal';
 
-interface SiteDownTableProps {
-  data: SiteDownWithStatus[];
+interface SiteUpTableProps {
+  data: SiteUp[];
   pagination?: MonitoringPagination;
   isLoading?: boolean;
   onPageChange?: (page: number) => void;
   onSiteIdFilter?: (siteId: string) => void;
 }
 
-type SortField = 'siteId' | 'siteName' | 'slaAvg' | 'statusSLA' | 'statusSP' | 'problem' | 'downSince' | 'downSeconds' | 'status';
+type SortField = 'siteId' | 'siteName' | 'slaAvg' | 'statusSLA' | 'problem';
 type SortOrder = 'asc' | 'desc' | null;
 
-export const SiteDownTable = ({
+export const SiteUpTable = ({
   data,
   pagination,
   isLoading,
   onPageChange,
   onSiteIdFilter,
-}: SiteDownTableProps) => {
+}: SiteUpTableProps) => {
   const [siteNameFilter, setSiteNameFilter] = useState('');
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedSite, setSelectedSite] = useState<SiteDownWithStatus | null>(null);
+  const [selectedSite, setSelectedSite] = useState<SiteUp | null>(null);
   const itemsPerPage = 5; // Fixed 5 rows per page
 
   // Handle sorting
@@ -93,27 +92,9 @@ export const SiteDownTable = ({
           aValue = slaStatusOrder[a.statusSLA || 'Very Bad'];
           bValue = slaStatusOrder[b.statusSLA || 'Very Bad'];
           break;
-        case 'statusSP':
-          const spStatusOrder = { 'Potensi SP': 2, 'Clear SP': 1 };
-          aValue = spStatusOrder[a.statusSP || 'Clear SP'];
-          bValue = spStatusOrder[b.statusSP || 'Clear SP'];
-          break;
         case 'problem':
           aValue = (a.problem || []).length;
           bValue = (b.problem || []).length;
-          break;
-        case 'downSince':
-          aValue = new Date(a.downSince).getTime();
-          bValue = new Date(b.downSince).getTime();
-          break;
-        case 'downSeconds':
-          aValue = a.downSeconds;
-          bValue = b.downSeconds;
-          break;
-        case 'status':
-          const statusOrder = { critical: 3, warning: 2, normal: 1 };
-          aValue = statusOrder[a.status];
-          bValue = statusOrder[b.status];
           break;
         default:
           return 0;
@@ -156,6 +137,27 @@ export const SiteDownTable = ({
     }
   }, [filteredAndSortedData.length, useClientPagination, currentPage, totalPages]);
 
+  const handleSiteNameFilterChange = (value: string) => {
+    setSiteNameFilter(value);
+    setCurrentPage(1); // Reset to first page when filtering
+    // For server-side filtering, call the callback
+    // We check if we're using server-side by checking if data length <= itemsPerPage
+    if (onSiteIdFilter && data.length <= itemsPerPage) {
+      onSiteIdFilter(value || '');
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    const useClientPagination = filteredAndSortedData.length > itemsPerPage;
+    if (useClientPagination) {
+      setCurrentPage(page);
+    } else {
+      // Server-side pagination
+      onPageChange?.(page);
+    }
+  };
+
+
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
       return <ArrowUpDown className="h-3 w-3" />;
@@ -167,24 +169,6 @@ export const SiteDownTable = ({
       return <ArrowDown className="h-3 w-3 text-primary" />;
     }
     return <ArrowUpDown className="h-3 w-3" />;
-  };
-
-  const getStatusBadge = (status: 'critical' | 'warning' | 'normal') => {
-    const variants = {
-      critical: 'destructive',
-      warning: 'default',
-      normal: 'secondary',
-    } as const;
-
-    const labels = {
-      critical: 'Critical',
-      warning: 'Warning',
-      normal: 'Normal',
-    };
-
-    return (
-      <Badge variant={variants[status]}>{labels[status]}</Badge>
-    );
   };
 
   // Helper functions for SLA status (similar to SLA table)
@@ -219,36 +203,12 @@ export const SiteDownTable = ({
     }
   };
 
-  const handleSiteNameFilterChange = (value: string) => {
-    setSiteNameFilter(value);
-    setCurrentPage(1); // Reset to first page when filtering
-    // For server-side filtering, call the callback
-    // We check if we're using server-side by checking if data length <= itemsPerPage
-    if (onSiteIdFilter && data.length <= itemsPerPage) {
-      onSiteIdFilter(value || '');
-    }
-  };
-
-  const handlePageChange = (page: number) => {
-    const useClientPagination = filteredAndSortedData.length > itemsPerPage;
-    if (useClientPagination) {
-      setCurrentPage(page);
-    } else {
-      // Server-side pagination
-      onPageChange?.(page);
-    }
-  };
-
-
   const columns: { key: SortField; label: string }[] = [
     { key: 'siteId', label: 'Site ID' },
     { key: 'siteName', label: 'Site Name' },
     { key: 'slaAvg', label: 'SLA AVG' },
     { key: 'statusSLA', label: 'Status SLA' },
-    { key: 'statusSP', label: 'Status SP' },
     { key: 'problem', label: 'Problem' },
-    { key: 'downSince', label: 'Down Since' },
-    { key: 'downSeconds', label: 'Duration' },
   ];
 
   return (
@@ -256,7 +216,7 @@ export const SiteDownTable = ({
       <div className="space-y-4">
         {/* Title */}
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">Site Down</h3>
+          <h3 className="text-lg font-semibold text-foreground">Site Up</h3>
         </div>
 
         {/* Filters */}
@@ -333,8 +293,7 @@ export const SiteDownTable = ({
                   <tr>
                     <td colSpan={columns.length + 1} className="text-center py-12">
                       <div className="flex flex-col items-center justify-center gap-2">
-                        <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-muted-foreground">Tidak ada data site down</span>
+                        <span className="text-muted-foreground">Tidak ada data site up</span>
                       </div>
                     </td>
                   </tr>
@@ -367,33 +326,12 @@ export const SiteDownTable = ({
                         <td className="py-3 px-4 text-sm">
                           <span className={cn(
                             "px-2 py-1 rounded text-xs font-medium",
-                            site.statusSP === 'Potensi SP'
-                              ? "bg-status-warning/10 text-status-warning"
-                              : "bg-status-good/10 text-status-good"
-                          )}>
-                            {site.statusSP || 'Clear SP'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <span className={cn(
-                            "px-2 py-1 rounded text-xs font-medium",
                             problemCount > 0
                               ? "bg-status-danger/10 text-status-danger"
                               : "bg-muted text-muted-foreground"
                           )}>
                             {problemCount}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          <div className="flex flex-col">
-                            <span className="text-foreground">{site.formattedDownSince}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(site.downSince).toLocaleString('id-ID')}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-sm font-medium text-foreground">
-                          {site.formattedDuration}
                         </td>
                         <td className="py-3 px-4">
                           <Button
@@ -480,7 +418,7 @@ export const SiteDownTable = ({
       {selectedSite && (
         <MonitoringSiteDetailModal
           site={selectedSite}
-          type="down"
+          type="up"
           onClose={() => setSelectedSite(null)}
         />
       )}
