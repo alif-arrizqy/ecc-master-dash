@@ -1,4 +1,3 @@
-import Navbar from '@/shared/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Plus, Edit, Trash2, Search, Calendar, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -330,10 +329,7 @@ const ProblemPage = () => {
   }, [searchTerm]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
-      <Navbar />
-      
-      <main className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8 animate-fade-in">
           <div className="flex items-center justify-between">
@@ -699,16 +695,6 @@ const ProblemPage = () => {
             )}
           </CardContent>
         </Card>
-      </main>
-      
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-4 mt-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ECC Master Dashboard. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };
