@@ -16,7 +16,7 @@ interface SiteUpTableProps {
   pagination?: MonitoringPagination;
   isLoading?: boolean;
   onPageChange?: (page: number) => void;
-  onSiteIdFilter?: (siteId: string) => void;
+  onSiteIdFilter?: (siteName: string) => void; // Changed to siteName for API filter
 }
 
 type SortField = 'siteId' | 'siteName' | 'slaAvg' | 'statusSLA' | 'problem';
@@ -87,15 +87,17 @@ export const SiteUpTable = ({
           aValue = a.slaAvg || 0;
           bValue = b.slaAvg || 0;
           break;
-        case 'statusSLA':
+        case 'statusSLA': {
           const slaStatusOrder = { 'Meet SLA': 4, 'Fair': 3, 'Bad': 2, 'Very Bad': 1 };
           aValue = slaStatusOrder[a.statusSLA || 'Very Bad'];
           bValue = slaStatusOrder[b.statusSLA || 'Very Bad'];
           break;
-        case 'problem':
+        }
+        case 'problem': {
           aValue = (a.problem || []).length;
           bValue = (b.problem || []).length;
           break;
+        }
         default:
           return 0;
       }
@@ -125,6 +127,8 @@ export const SiteUpTable = ({
   // If we have more data than itemsPerPage, use client-side pagination
   // Otherwise, use server-side pagination info if available
   const useClientPagination = totalItems > itemsPerPage;
+  // For client-side pagination, use server total if available, otherwise use filtered data length
+  const serverTotal = pagination?.total || totalItems;
   const totalPages = useClientPagination 
     ? Math.ceil(totalItems / itemsPerPage)
     : (pagination?.totalPages || 1);
@@ -155,6 +159,12 @@ export const SiteUpTable = ({
       // Server-side pagination
       onPageChange?.(page);
     }
+  };
+
+  const handlePageButtonClick = (page: number, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handlePageChange(page);
   };
 
 
@@ -313,7 +323,7 @@ export const SiteUpTable = ({
                           {site.siteName}
                         </td>
                         <td className={cn("py-3 px-4 text-sm font-semibold", getSLAColor(site.slaAvg))}>
-                          {site.slaAvg ? `${site.slaAvg.toFixed(2)}%` : '-'}
+                          {site.slaAvg != null ? `${site.slaAvg.toFixed(2)}%` : '-'}
                         </td>
                         <td className="py-3 px-4 text-sm">
                           <span className={cn(
@@ -358,18 +368,20 @@ export const SiteUpTable = ({
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
             <p className="text-sm text-muted-foreground">
               Halaman {currentPageNum} dari {totalPages}
-              {totalItems > 0 && (
-                <span className="ml-2">
-                  ({((currentPageNum - 1) * itemsPerPage) + 1}-{Math.min(currentPageNum * itemsPerPage, totalItems)} dari {totalItems} site)
-                </span>
-              )}
+              {(() => {
+                const startItem = ((currentPageNum - 1) * itemsPerPage) + 1;
+                const endItem = Math.min(currentPageNum * itemsPerPage, totalItems);
+                const total = useClientPagination ? serverTotal : (pagination?.total || totalItems);
+                return `(${startItem}-${endItem} dari ${total} site)`;
+              })()}
             </p>
 
             <div className="flex items-center gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handlePageChange(currentPageNum - 1)}
+                onClick={(e) => handlePageButtonClick(currentPageNum - 1, e)}
                 disabled={currentPageNum === 1 || isLoading}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -390,9 +402,10 @@ export const SiteUpTable = ({
                 return (
                   <Button
                     key={pageNum}
+                    type="button"
                     variant={currentPageNum === pageNum ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handlePageChange(pageNum)}
+                    onClick={(e) => handlePageButtonClick(pageNum, e)}
                     className="w-8"
                     disabled={isLoading}
                   >
@@ -402,9 +415,10 @@ export const SiteUpTable = ({
               })}
 
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handlePageChange(currentPageNum + 1)}
+                onClick={(e) => handlePageButtonClick(currentPageNum + 1, e)}
                 disabled={currentPageNum >= totalPages || isLoading}
               >
                 <ChevronRight className="h-4 w-4" />

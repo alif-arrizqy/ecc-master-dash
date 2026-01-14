@@ -29,10 +29,10 @@ export interface SiteUp {
 
 export interface MonitoringSummary {
   totalSites: number;
-  totalSitesDown: number;
-  totalSitesUp: number;
-  percentageSitesDown: number;
-  percentageSitesUp: number;
+  totalSitesDown?: number;
+  totalSitesUp?: number;
+  percentageSitesDown?: number;
+  percentageSitesUp?: number;
 }
 
 export interface MonitoringPagination {
@@ -60,6 +60,7 @@ export interface MonitoringFilters {
   page?: number;
   limit?: number;
   siteId?: string;
+  siteName?: string;
 }
 
 export type SiteDownStatus = 'critical' | 'warning' | 'normal';
