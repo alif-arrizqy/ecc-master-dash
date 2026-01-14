@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { SiteDownWithStatus, MonitoringPagination } from '../types/monitoring.types';
 import { AlertCircle, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { useState } from 'react';
 
 interface SiteDownTableProps {

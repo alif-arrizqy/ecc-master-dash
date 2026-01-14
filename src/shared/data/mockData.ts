@@ -243,3 +243,4 @@ export const generateSLARecords = (count: number): SLARecord[] => {
 };
 
 export const slaRecords = generateSLARecords(80);
+
