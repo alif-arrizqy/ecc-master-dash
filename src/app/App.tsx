@@ -11,8 +11,8 @@ import UnderDevelopment from "../pages/UnderDevelopment";
 // Dashboard Page (Lazy loaded)
 const Dashboard = lazy(() => import("../features/dashboard/pages/Dashboard").then(m => ({ default: m.default })));
 
-// Sites Pages
-import SitesPage from "../pages/sites/SitesPage";
+// Sites Pages (Lazy loaded)
+const SitesPage = lazy(() => import("../features/sites/SitesPage").then(m => ({ default: m.default })));
 
 // SLA Bakti Pages (Lazy loaded)
 const UploadPage = lazy(() => import("../features/sla/pages/UploadPage").then(m => ({ default: m.default })));
@@ -45,7 +45,14 @@ const App = () => (
           />
           
           {/* Sites Routes */}
-          <Route path="/sites" element={<SitesPage />} />
+          <Route 
+            path="/sites" 
+            element={
+              <Suspense fallback={<Loading text="Memuat halaman sites..." />}>
+                <SitesPage />
+              </Suspense>
+            } 
+          />
           
           {/* Monitoring Routes */}
           <Route 
