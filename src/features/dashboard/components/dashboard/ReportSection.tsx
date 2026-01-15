@@ -3,7 +3,7 @@ import { Copy, Check, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
-import { SLAReportDetail } from '@/types/api';
+import { SLAReportDetail } from '@/shared/types/api';
 
 interface GAMASHistoryItem {
   date: string;
