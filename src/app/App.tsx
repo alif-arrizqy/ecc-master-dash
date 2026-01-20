@@ -26,6 +26,9 @@ const RawSLAPage = lazy(() => import("../features/sla/pages/RawSLAPage").then(m 
 // Monitoring Pages
 const MonitoringDashboard = lazy(() => import("../features/monitoring/pages/MonitoringDashboard").then(m => ({ default: m.MonitoringDashboard })));
 
+// Shipping Pages
+const ShippingPage = lazy(() => import("../features/shipping/pages/ShippingPage").then(m => ({ default: m.default })));
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -64,6 +67,17 @@ const App = () => (
                 </Suspense>
               } 
             />
+            
+            {/* Shipping Routes */}
+            <Route 
+              path="/shipping" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman shipping..." />}>
+                  <ShippingPage />
+                </Suspense>
+              } 
+            />
+            
             {/* SLA Bakti Routes */}
             <Route 
               path="/sla-bakti/upload" 
