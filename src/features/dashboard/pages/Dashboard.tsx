@@ -1,4 +1,3 @@
-import Navbar from '@/shared/components/layout/Navbar';
 import SummaryTable from '../components/dashboard/SummaryTable';
 import DailySLAChart from '../components/dashboard/DailySLAChart';
 import CompactDailySLAChart from '../components/dashboard/CompactDailySLAChart';
@@ -21,9 +20,9 @@ import {
   useGAMASHistory,
   useSLAReportDetail,
 } from '../hooks/useDashboardQueries';
-import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getSLADashboardDateRange } from '@/lib/dateUtils';
+import { getSLADateRange, getSLAMonthPeriod, getSLAMonthName, getSLAReportDateRange, getSLADashboardDateRange } from '@/shared/lib/dateUtils';
 import WeeklyTrendChart from '../components/dashboard/WeeklyTrendChart';
-import { SLAReportDetail } from '@/types/api';
+import { SLAReportDetail } from '@/shared/types/api';
 
 const Dashboard = () => {
   // Hook untuk refresh cache
@@ -131,10 +130,7 @@ const Dashboard = () => {
   const hasError = errorSummary || errorAllSites || errorTalis5Full || errorTalis5Mix || errorJSPro;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
-      <Navbar />
-      
-      <main className="w-full px-2 py-4 container mx-auto">
+    <div className="w-full px-2 py-4 container mx-auto">
         {hasError && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
@@ -284,16 +280,6 @@ const Dashboard = () => {
             </section>
           </>
         )}
-      </main>
-      
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-4 mt-8">
-        <div className="w-full px-2 text-center">
-          <p className="text-sm text-muted-foreground">
-          © {new Date().getFullYear()} ECC Master Dashboard - Sundaya Indonesia. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };

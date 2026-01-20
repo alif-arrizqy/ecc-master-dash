@@ -1,5 +1,5 @@
 import { cn } from "@/shared/lib/utils";
-import { MonthlyReportSummary } from "@/types/api";
+import { MonthlyReportSummary } from "@/shared/types/api";
 
 interface SummaryTableProps {
   data: MonthlyReportSummary | undefined;

@@ -13,7 +13,7 @@ import {
   GAMASHistoryItem,
   PaginationInfo,
   SLAReportDetail,
-} from '@/types/api';
+} from '@/shared/types/api';
 import { DailySLA, WeeklySLA } from '@/shared/data/mockData';
 
 /**

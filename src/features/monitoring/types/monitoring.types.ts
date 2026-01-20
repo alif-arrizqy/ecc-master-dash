@@ -6,8 +6,12 @@ export interface SiteDown {
   id: number;
   siteId: string;
   siteName: string;
-  downSince: string; // ISO 8601 date string
-  downSeconds: number;
+  downSince: string | null; // ISO 8601 date string, bisa null
+  downSeconds: number | null; // Bisa null
+  slaAvg?: number;
+  statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
+  statusSP?: 'Potensi SP' | 'Clear SP';
+  problem?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -16,16 +20,19 @@ export interface SiteUp {
   id: number;
   siteId: string;
   siteName: string;
+  slaAvg?: number;
+  statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
+  problem?: string[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface MonitoringSummary {
   totalSites: number;
-  totalSitesDown: number;
-  totalSitesUp: number;
-  percentageSitesDown: number;
-  percentageSitesUp: number;
+  totalSitesDown?: number;
+  totalSitesUp?: number;
+  percentageSitesDown?: number;
+  percentageSitesUp?: number;
 }
 
 export interface MonitoringPagination {
@@ -53,13 +60,18 @@ export interface MonitoringFilters {
   page?: number;
   limit?: number;
   siteId?: string;
+  siteName?: string;
 }
 
 export type SiteDownStatus = 'critical' | 'warning' | 'normal';
 
 export interface SiteDownWithStatus extends SiteDown {
   status: SiteDownStatus;
-  formattedDuration: string;
-  formattedDownSince: string;
+  formattedDuration: string; // '-' jika null
+  formattedDownSince: string; // '-' jika null
+  slaAvg?: number;
+  statusSLA?: 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
+  statusSP?: 'Potensi SP' | 'Clear SP';
+  problem?: string[];
 }
 

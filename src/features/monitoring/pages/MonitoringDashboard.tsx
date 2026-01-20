@@ -3,25 +3,41 @@
  * Halaman utama untuk monitoring site down dan site up
  */
 
-import { useState } from 'react';
-import Navbar from '@/shared/components/layout/Navbar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState, useMemo } from 'react';
 import { MonitoringSummary } from '../components/MonitoringSummary';
 import { SiteDownTable } from '../components/SiteDownTable';
-import { useSiteDown, useSiteUp } from '../hooks/useMonitoringQueries';
-import { MonitoringFilters } from '../types/monitoring.types';
+import { SiteUpTable } from '../components/SiteUpTable';
+import { useSiteDown, useSiteUp, useSyncSiteDown, useSyncSiteUp, useSLAMasterForMerge } from '../hooks/useMonitoringQueries';
+import { MonitoringFilters, SiteDownWithStatus } from '../types/monitoring.types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/lib/utils';
+import { useToast } from '@/shared/hooks/use-toast';
+import { Loading } from '@/components/ui/loading';
+import { formatDistanceToNow } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 export const MonitoringDashboard = () => {
+  const { toast } = useToast();
+  const useDummyData = false; // Menggunakan real API data
+  
   const [siteDownFilters, setSiteDownFilters] = useState<MonitoringFilters>({
     page: 1,
-    limit: 20,
+    limit: 80, // Fetch 80 data untuk client-side pagination (5 per page)
   });
   const [siteUpFilters, setSiteUpFilters] = useState<MonitoringFilters>({
     page: 1,
-    limit: 20,
+    limit: 80, // Fetch 80 data untuk client-side pagination (5 per page)
   });
+
+  // Sync mutations
+  const syncSiteDown = useSyncSiteDown();
+  const syncSiteUp = useSyncSiteUp();
+
+  // Fetch SLA master data untuk merge dengan monitoring data
+  // useSLAMasterForMerge sudah mengembalikan Map<string, any> langsung
+  const { data: slaDataMap } = useSLAMasterForMerge();
 
   // Fetch site down data
   const {
@@ -29,7 +45,7 @@ export const MonitoringDashboard = () => {
     isLoading: isLoadingSiteDown,
     error: errorSiteDown,
     refetch: refetchSiteDown,
-  } = useSiteDown(siteDownFilters);
+  } = useSiteDown(siteDownFilters, slaDataMap);
 
   // Fetch site up data
   const {
@@ -37,108 +53,171 @@ export const MonitoringDashboard = () => {
     isLoading: isLoadingSiteUp,
     error: errorSiteUp,
     refetch: refetchSiteUp,
-  } = useSiteUp(siteUpFilters);
+  } = useSiteUp(siteUpFilters, slaDataMap);
+
+  // Combine summary from both site-down and site-up responses
+  const combinedSummary = useMemo(() => {
+    const siteDownSummary = siteDownData?.summary;
+    const siteUpSummary = siteUpData?.summary;
+    
+    if (!siteDownSummary && !siteUpSummary) {
+      return undefined;
+    }
+    
+    return {
+      totalSites: siteDownSummary?.totalSites ?? siteUpSummary?.totalSites ?? 0,
+      totalSitesDown: siteDownSummary?.totalSitesDown,
+      totalSitesUp: siteUpSummary?.totalSitesUp,
+      percentageSitesDown: siteDownSummary?.percentageSitesDown,
+      percentageSitesUp: siteUpSummary?.percentageSitesUp,
+    };
+  }, [siteDownData?.summary, siteUpData?.summary]);
+
+  // Handle sync button - POST to /sync then GET data
+  const handleSync = async () => {
+    try {
+      // Step 1: POST to sync endpoints
+      await Promise.all([
+        syncSiteDown.mutateAsync(),
+        syncSiteUp.mutateAsync(),
+      ]);
+      
+      // Step 2: Refetch data after sync (GET endpoints)
+      await Promise.all([
+        refetchSiteDown(),
+        refetchSiteUp(),
+      ]);
+      
+      toast({
+        title: 'Sync Berhasil',
+        description: 'Data monitoring berhasil di-sync dari NMS Semeru',
+      });
+    } catch (error) {
+      toast({
+        title: 'Sync Gagal',
+        description: 'Gagal melakukan sync data. Silakan coba lagi.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleSiteDownPageChange = (page: number) => {
-    setSiteDownFilters((prev) => ({ ...prev, page }));
+    // Client-side pagination, tidak perlu update filter
+    // Page change di-handle di component
   };
 
-  const handleSiteDownLimitChange = (limit: number) => {
-    setSiteDownFilters((prev) => ({ ...prev, limit, page: 1 }));
-  };
-
-  const handleSiteDownSiteIdFilter = (siteId: string) => {
+  const handleSiteDownSiteNameFilter = (siteName: string) => {
     setSiteDownFilters((prev) => ({
       ...prev,
-      siteId: siteId || undefined,
+      siteName: siteName || undefined,
       page: 1,
+      limit: 80, // Fetch 80 data untuk client-side pagination
     }));
   };
 
   const handleSiteUpPageChange = (page: number) => {
-    setSiteUpFilters((prev) => ({ ...prev, page }));
+    // Client-side pagination, tidak perlu update filter
+    // Page change di-handle di component
   };
 
-  const handleSiteUpLimitChange = (limit: number) => {
-    setSiteUpFilters((prev) => ({ ...prev, limit, page: 1 }));
-  };
-
-  const handleSiteUpSiteIdFilter = (siteId: string) => {
+  const handleSiteUpSiteNameFilter = (siteName: string) => {
     setSiteUpFilters((prev) => ({
       ...prev,
-      siteId: siteId || undefined,
+      siteName: siteName || undefined,
       page: 1,
+      limit: 80, // Fetch 80 data untuk client-side pagination
     }));
   };
 
+  // Check if any critical data is loading
+  const isLoading = isLoadingSiteDown || isLoadingSiteUp;
+  const hasError = errorSiteDown || errorSiteUp;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
-      <Navbar />
-      <main className="w-full px-2 py-4 container mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Site Monitoring</h1>
-          <p className="text-muted-foreground">
-            Monitoring status site down dan site up dari NMS Semeru
-          </p>
-        </div>
-
-        {/* Summary Cards */}
-        {siteDownData?.summary && (
-          <div className="mb-6">
-            <MonitoringSummary
-              summary={siteDownData.summary}
-              isLoading={isLoadingSiteDown}
-            />
-          </div>
-        )}
-
-        {/* Error Alert */}
-        {(errorSiteDown || errorSiteUp) && (
+    <div className="container mx-auto px-4 py-8">
+        {hasError && !useDummyData && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {errorSiteDown
-                ? 'Gagal memuat data site down. Silakan refresh halaman.'
-                : 'Gagal memuat data site up. Silakan refresh halaman.'}
+              Terjadi kesalahan saat memuat data. Silakan refresh halaman atau coba lagi nanti.
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Tabs untuk Site Down dan Site Up */}
-        <Tabs defaultValue="site-down" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="site-down">Site Down</TabsTrigger>
-            <TabsTrigger value="site-up">Site Up</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="site-down" className="space-y-4">
-            <SiteDownTable
-              data={siteDownData?.data || []}
-              pagination={siteDownData?.pagination}
-              isLoading={isLoadingSiteDown}
-              onPageChange={handleSiteDownPageChange}
-              onLimitChange={handleSiteDownLimitChange}
-              onSiteIdFilter={handleSiteDownSiteIdFilter}
-              onRefresh={() => refetchSiteDown()}
-            />
-          </TabsContent>
-
-          <TabsContent value="site-up" className="space-y-4">
-            {/* Site Up Table - bisa dibuat component terpisah nanti */}
-            <div className="rounded-md border p-4">
-              <p className="text-muted-foreground">
-                Site Up table akan diimplementasikan di sini
-              </p>
-              {siteUpData && (
-                <div className="mt-4">
-                  <p>Total Sites Up: {siteUpData.summary.totalSitesUp}</p>
-                  <p>Data: {JSON.stringify(siteUpData.data.slice(0, 3), null, 2)}</p>
+        {isLoading && !useDummyData ? (
+          <Loading text="Memuat data monitoring..." />
+        ) : (
+          <>
+            {/* Page Header */}
+            <div className="mb-8 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
+                    <Activity className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                      Site Monitoring
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                      Monitoring status site down dan site up dari <b className='text-green-600'>NMS Semeru</b>
+                    </p>
+                  </div>
                 </div>
-              )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={syncSiteDown.isPending || syncSiteUp.isPending}
+                  onClick={handleSync}
+                  className="group gap-2 border-primary/50 text-primary hover:bg-primary/10 hover:border-primary hover:scale-105 transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  <RefreshCw 
+                    className={cn(
+                      "h-4 w-4 transition-transform duration-300",
+                      (syncSiteDown.isPending || syncSiteUp.isPending) ? "animate-spin" : "group-hover:rotate-180"
+                    )} 
+                  />
+                  Sync Data
+                </Button>
+              </div>
             </div>
-          </TabsContent>
-        </Tabs>
-      </main>
+
+            {/* Summary Cards */}
+            {combinedSummary && (
+              <section className="mb-6 animate-slide-up">
+                <MonitoringSummary
+                  summary={combinedSummary}
+                  isLoading={isLoadingSiteDown || isLoadingSiteUp}
+                />
+              </section>
+            )}
+
+            {/* Tables: Site Down (Top) dan Site Up (Bottom) */}
+            <section className="mb-6 space-y-6">
+              {/* Site Down Section */}
+              <div className="animate-slide-up">
+                <SiteDownTable
+                  data={siteDownData?.data || []}
+                  pagination={siteDownData?.pagination}
+                  isLoading={isLoadingSiteDown && !useDummyData}
+                  onPageChange={handleSiteDownPageChange}
+                  onSiteIdFilter={handleSiteDownSiteNameFilter}
+                />
+              </div>
+
+              {/* Site Up Section */}
+              <div className="animate-slide-up">
+                <SiteUpTable
+                  data={siteUpData?.data || []}
+                  pagination={siteUpData?.pagination}
+                  isLoading={isLoadingSiteUp && !useDummyData}
+                  onPageChange={handleSiteUpPageChange}
+                  onSiteIdFilter={handleSiteUpSiteNameFilter}
+                />
+              </div>
+            </section>
+          </>
+        )}
     </div>
   );
 };
