@@ -440,6 +440,17 @@ const SitesPage = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Site Details Dialog */}
+        <SiteDetailsDialog
+          site={viewingDetails}
+          open={!!viewingDetails}
+          onOpenChange={(open) => {
+            if (!open) {
+              setViewingDetails(null);
+            }
+          }}
+        />
     </div>
   );
 };
