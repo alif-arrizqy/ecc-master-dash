@@ -11,6 +11,41 @@ const WeeklyTrendChart = ({ data }: WeeklyTrendChartProps) => {
   const avgSLA = validData.length > 0 
     ? validData.reduce((sum, d) => sum + d.sla, 0) / validData.length 
     : 0;
+
+  // Hitung dynamic Y-axis domain berdasarkan range data aktual
+  const getYAxisDomain = () => {
+    if (validData.length === 0) {
+      return [0, 100]; // Default jika tidak ada data valid
+    }
+
+    const values = validData.map(d => d.sla);
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const range = maxValue - minValue;
+
+    // Jika range sangat kecil, buat margin yang proporsional
+    // Minimal margin 2% di atas dan bawah
+    const margin = Math.max(range * 0.15, 2); // 15% dari range atau minimal 2%
+
+    // Bulatkan ke bawah untuk min (dengan interval 2%)
+    let minDomain = Math.floor((minValue - margin) / 2) * 2;
+    // Bulatkan ke atas untuk max (dengan interval 2%)
+    let maxDomain = Math.ceil((maxValue + margin) / 2) * 2;
+
+    // Pastikan tidak kurang dari 0 dan tidak lebih dari 100
+    minDomain = Math.max(0, minDomain);
+    maxDomain = Math.min(100, maxDomain);
+
+    // Jika setelah pembulatan range terlalu kecil, gunakan range default yang masuk akal
+    if (maxDomain - minDomain < 5) {
+      minDomain = Math.max(0, Math.floor(minValue - 2));
+      maxDomain = Math.min(100, Math.ceil(maxValue + 2));
+    }
+
+    return [minDomain, maxDomain];
+  };
+
+  const yAxisDomain = getYAxisDomain();
   
   // Handle empty data
   if (!data || data.length === 0) {
@@ -57,11 +92,11 @@ const WeeklyTrendChart = ({ data }: WeeklyTrendChartProps) => {
               axisLine={{ stroke: 'hsl(var(--border))' }}
             />
             <YAxis 
-              domain={[0, 100]}
+              domain={yAxisDomain}
               tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => `${value}%`}
+              tickFormatter={(value) => `${value.toFixed(1)}%`}
             />
             <Tooltip 
               content={({ active, payload, label }) => {
