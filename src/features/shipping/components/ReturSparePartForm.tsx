@@ -108,7 +108,7 @@ export const ReturSparePartForm = ({
         <Textarea
           value={formData.list_spare_part || ''}
           onChange={(e) => onChange({ ...formData, list_spare_part: e.target.value })}
-          placeholder="Masukkan list barang (bisa JSON array atau string)"
+          placeholder="Masukkan list barang"
           rows={4}
           required
         />

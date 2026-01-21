@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Filter, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/shared/lib/utils';
 import type { ReturSparePart } from '../types/shipping.types';
@@ -27,6 +28,20 @@ interface ReturSparePartTableProps {
   onView: (item: ReturSparePart) => void;
   onEdit: (item: ReturSparePart) => void;
   onDelete: (id: number) => void;
+  filter?: {
+    startDate?: string;
+    endDate?: string;
+    shipper?: string;
+    source_spare_part?: string;
+    search?: string;
+  };
+  onFilterChange?: (filter: {
+    startDate?: string;
+    endDate?: string;
+    shipper?: string;
+    source_spare_part?: string;
+    search?: string;
+  }) => void;
 }
 
 type SortField = 'date' | 'shipper' | 'source_spare_part' | 'list_spare_part';
@@ -38,12 +53,69 @@ export const ReturSparePartTable = ({
   onView,
   onEdit,
   onDelete,
+  filter = {},
+  onFilterChange,
 }: ReturSparePartTableProps) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(filter.search || '');
+  const [showFilters, setShowFilters] = useState(false);
+  const [localFilter, setLocalFilter] = useState({
+    startDate: filter.startDate || '',
+    endDate: filter.endDate || '',
+    shipper: filter.shipper || '',
+    source_spare_part: filter.source_spare_part || '',
+    search: filter.search || '',
+  });
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  // Sync local filter with prop filter
+  useEffect(() => {
+    setLocalFilter({
+      startDate: filter.startDate || '',
+      endDate: filter.endDate || '',
+      shipper: filter.shipper || '',
+      source_spare_part: filter.source_spare_part || '',
+      search: filter.search || '',
+    });
+    setSearchQuery(filter.search || '');
+  }, [filter]);
+
+  // Handle filter change
+  const handleFilterChange = (key: string, value: string) => {
+    const newFilter = { ...localFilter, [key]: value };
+    setLocalFilter(newFilter);
+    if (onFilterChange) {
+      // Remove empty values
+      const cleanedFilter: any = {};
+      Object.entries(newFilter).forEach(([k, v]) => {
+        if (v && v.trim() !== '') {
+          cleanedFilter[k] = v;
+        }
+      });
+      onFilterChange(cleanedFilter);
+    }
+  };
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    const emptyFilter = {
+      startDate: '',
+      endDate: '',
+      shipper: '',
+      source_spare_part: '',
+      search: '',
+    };
+    setLocalFilter(emptyFilter);
+    setSearchQuery('');
+    if (onFilterChange) {
+      onFilterChange({});
+    }
+  };
+
+  // Check if any filter is active
+  const hasActiveFilters = Object.values(localFilter).some(v => v && v.trim() !== '');
 
   // Format list_spare_part
   const formatListSparePart = (list?: string | Array<unknown>) => {
@@ -191,18 +263,101 @@ export const ReturSparePartTable = ({
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <div className="flex items-center justify-between">
-        <Input
-          placeholder="Search by Shipper, Asal Spare Part, List Barang, Notes, Tanggal..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="max-w-md"
-        />
+      {/* Search and Filter */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 min-w-[300px]">
+          <Input
+            placeholder="Search by Shipper, Asal Spare Part, List Barang, Notes, Tanggal..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              handleFilterChange('search', e.target.value);
+              setCurrentPage(1);
+            }}
+            className="flex-1"
+          />
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filter
+            {hasActiveFilters && (
+              <span className="ml-2 px-1.5 py-0.5 text-xs bg-primary-foreground text-primary rounded-full">
+                {Object.values(localFilter).filter(v => v && v.trim() !== '').length}
+              </span>
+            )}
+          </Button>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              title="Clear all filters"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold">Filter Data</h4>
+            <Button variant="ghost" size="sm" onClick={() => setShowFilters(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Shipper Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="filter-shipper">Shipper</Label>
+              <Input
+                id="filter-shipper"
+                placeholder="Masukkan shipper"
+                value={localFilter.shipper}
+                onChange={(e) => handleFilterChange('shipper', e.target.value)}
+              />
+            </div>
+
+            {/* Source Spare Part Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="filter-source">Asal Spare Part</Label>
+              <Input
+                id="filter-source"
+                placeholder="Masukkan asal spare part"
+                value={localFilter.source_spare_part}
+                onChange={(e) => handleFilterChange('source_spare_part', e.target.value)}
+              />
+            </div>
+
+            {/* Start Date Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="filter-start-date">Tanggal Mulai</Label>
+              <Input
+                id="filter-start-date"
+                type="date"
+                value={localFilter.startDate}
+                onChange={(e) => handleFilterChange('startDate', e.target.value)}
+              />
+            </div>
+
+            {/* End Date Filter */}
+            <div className="space-y-2">
+              <Label htmlFor="filter-end-date">Tanggal Akhir</Label>
+              <Input
+                id="filter-end-date"
+                type="date"
+                value={localFilter.endDate}
+                onChange={(e) => handleFilterChange('endDate', e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results count */}
       {!isLoading && totalItems > 0 && (
