@@ -104,6 +104,10 @@ export const shippingSparePartApi = {
     search?: string;
     status?: string;
     site_id?: string;
+    province?: string;
+    cluster?: string;
+    startDate?: string;
+    endDate?: string;
   }) => {
     return fetchShippingApiPaginated<ShippingSparePart[]>('/api/v1/shipping-spare-part', {
       params,
@@ -232,6 +236,8 @@ export const shippingSparePartApi = {
     startDate?: string;
     endDate?: string;
     search?: string;
+    province?: string;
+    cluster?: string;
   }): Promise<{ blob: Blob; filename: string }> => {
     const response = await shippingApiClient.get('/api/v1/shipping-spare-part/export', {
       params,
@@ -241,6 +247,43 @@ export const shippingSparePartApi = {
     // Extract filename from Content-Disposition header
     const contentDisposition = response.headers['content-disposition'];
     let filename = `shipping-spare-part-${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+    
+    return {
+      blob: response.data,
+      filename,
+    };
+  },
+
+  /**
+   * Export to PDF
+   * GET /api/v1/shipping-spare-part/export-pdf
+   */
+  exportToPDF: async (params?: {
+    status?: string | string[];
+    site_id?: string;
+    address_id?: number;
+    problem_id?: number;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    province?: string;
+    cluster?: string;
+  }): Promise<{ blob: Blob; filename: string }> => {
+    const response = await shippingApiClient.get('/api/v1/shipping-spare-part/export-pdf', {
+      params,
+      responseType: 'blob',
+    });
+    
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `shipping-spare-part-${new Date().toISOString().split('T')[0]}.pdf`;
     
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
@@ -276,6 +319,10 @@ export const returSparePartApi = {
     page?: number;
     limit?: number;
     search?: string;
+    startDate?: string;
+    endDate?: string;
+    shipper?: string;
+    source_spare_part?: string;
   }) => {
     return fetchShippingApiPaginated<ReturSparePart[]>('/api/v1/retur-spare-part', {
       params,
@@ -370,6 +417,39 @@ export const returSparePartApi = {
     // Extract filename from Content-Disposition header
     const contentDisposition = response.headers['content-disposition'];
     let filename = `retur-spare-part-${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+    
+    return {
+      blob: response.data,
+      filename,
+    };
+  },
+
+  /**
+   * Export to PDF
+   * GET /api/v1/retur-spare-part/export-pdf
+   */
+  exportToPDF: async (params?: {
+    startDate?: string;
+    endDate?: string;
+    shipper?: string;
+    source_spare_part?: string;
+    search?: string;
+  }): Promise<{ blob: Blob; filename: string }> => {
+    const response = await shippingApiClient.get('/api/v1/retur-spare-part/export-pdf', {
+      params,
+      responseType: 'blob',
+    });
+    
+    // Extract filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `retur-spare-part-${new Date().toISOString().split('T')[0]}.pdf`;
     
     if (contentDisposition) {
       const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
