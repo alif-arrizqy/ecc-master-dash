@@ -15,7 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Download, Package, Truck } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Download, Package, Truck, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
 import { ShippingStatistics } from '../components/ShippingStatistics';
 import { ShippingSparePartTable } from '../components/ShippingSparePartTable';
 import { ReturSparePartTable } from '../components/ReturSparePartTable';
@@ -44,6 +51,26 @@ const ShippingPage = () => {
   const [detailType, setDetailType] = useState<'shipping' | 'retur'>('shipping');
   const [editingShippingId, setEditingShippingId] = useState<number | null>(null);
   const [editingReturId, setEditingReturId] = useState<number | null>(null);
+
+  // Filter state for shipping
+  const [shippingFilter, setShippingFilter] = useState<{
+    status?: string;
+    site_id?: string;
+    province?: string;
+    cluster?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }>({});
+
+  // Filter state for retur
+  const [returFilter, setReturFilter] = useState<{
+    startDate?: string;
+    endDate?: string;
+    shipper?: string;
+    source_spare_part?: string;
+    search?: string;
+  }>({});
 
   // Form data state
   const [shippingFormData, setShippingFormData] = useState<ShippingSparePartFormData>({
@@ -74,8 +101,12 @@ const ShippingPage = () => {
     isLoading: isLoadingShipping,
     refetch: refetchShipping,
   } = useQuery({
-    queryKey: ['shipping-spare-part', shippingPage],
-    queryFn: () => shippingSparePartApi.getAll({ page: shippingPage, limit: 20 }),
+    queryKey: ['shipping-spare-part', shippingPage, shippingFilter],
+    queryFn: () => shippingSparePartApi.getAll({ 
+      page: shippingPage, 
+      limit: 20,
+      ...shippingFilter,
+    }),
   });
 
   // Fetch retur data
@@ -84,8 +115,12 @@ const ShippingPage = () => {
     isLoading: isLoadingRetur,
     refetch: refetchRetur,
   } = useQuery({
-    queryKey: ['return-spare-part', returPage],
-    queryFn: () => returSparePartApi.getAll({ page: returPage, limit: 20 }),
+    queryKey: ['return-spare-part', returPage, returFilter],
+    queryFn: () => returSparePartApi.getAll({ 
+      page: returPage, 
+      limit: 20,
+      ...returFilter,
+    }),
   });
 
   // Create shipping mutation
@@ -264,46 +299,104 @@ const ShippingPage = () => {
     },
   });
 
-  // Export to excel functions
-  const handleExportShipping = async () => {
+  // Export state
+  const [isExportingShipping, setIsExportingShipping] = useState(false);
+  const [isExportingRetur, setIsExportingRetur] = useState(false);
+
+  // Helper function to download file
+  const downloadFile = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  // Export to Excel functions with filters
+  const handleExportShippingExcel = async () => {
+    setIsExportingShipping(true);
     try {
-      // Get current filters (you can add filter state if needed)
-      // For now, export all data or you can add filters based on table state
-      const result = await shippingSparePartApi.exportToExcel();
-      const url = window.URL.createObjectURL(result.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result.filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Export berhasil');
+      // Convert status to backend format if needed
+      const exportParams: any = { ...shippingFilter };
+      if (exportParams.status) {
+        // Convert to uppercase with underscore if needed
+        const statusMap: Record<string, string> = {
+          'request gudang': 'REQUEST_GUDANG',
+          'proses kirim': 'PROSES_KIRIM',
+          'selesai': 'SELESAI',
+        };
+        exportParams.status = statusMap[exportParams.status.toLowerCase()] || exportParams.status.toUpperCase().replace(/\s+/g, '_');
+      }
+      
+      const result = await shippingSparePartApi.exportToExcel(exportParams);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export Excel berhasil');
     } catch (error) {
-      toast.error('Gagal export data', {
+      toast.error('Gagal export Excel', {
         description: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      setIsExportingShipping(false);
     }
   };
 
-  const handleExportRetur = async () => {
+  const handleExportShippingPDF = async () => {
+    setIsExportingShipping(true);
     try {
-      // Get current filters (you can add filter state if needed)
-      // For now, export all data or you can add filters based on table state
-      const result = await returSparePartApi.exportToExcel();
-      const url = window.URL.createObjectURL(result.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result.filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Export berhasil');
+      // Convert status to backend format if needed
+      const exportParams: any = { ...shippingFilter };
+      if (exportParams.status) {
+        // Convert to uppercase with underscore if needed
+        const statusMap: Record<string, string> = {
+          'request gudang': 'REQUEST_GUDANG',
+          'proses kirim': 'PROSES_KIRIM',
+          'selesai': 'SELESAI',
+        };
+        exportParams.status = statusMap[exportParams.status.toLowerCase()] || exportParams.status.toUpperCase().replace(/\s+/g, '_');
+      }
+      
+      const result = await shippingSparePartApi.exportToPDF(exportParams);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export PDF berhasil');
     } catch (error) {
-      toast.error('Gagal export data', {
+      toast.error('Gagal export PDF', {
         description: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      setIsExportingShipping(false);
+    }
+  };
+
+  const handleExportReturExcel = async () => {
+    setIsExportingRetur(true);
+    try {
+      const result = await returSparePartApi.exportToExcel(returFilter);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export Excel berhasil');
+    } catch (error) {
+      toast.error('Gagal export Excel', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsExportingRetur(false);
+    }
+  };
+
+  const handleExportReturPDF = async () => {
+    setIsExportingRetur(true);
+    try {
+      const result = await returSparePartApi.exportToPDF(returFilter);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export PDF berhasil');
+    } catch (error) {
+      toast.error('Gagal export PDF', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsExportingRetur(false);
     }
   };
 
@@ -473,10 +566,29 @@ const ShippingPage = () => {
               <h3 className="text-lg font-semibold text-foreground">Shipping Spare Part</h3>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportShipping} size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export Excel
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={isExportingShipping}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExportingShipping ? 'Exporting...' : 'Export'}
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportShippingExcel} disabled={isExportingShipping}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export ke Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportShippingPDF} disabled={isExportingShipping}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export ke PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button onClick={() => handleOpenShippingForm()} size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Tambah Data
@@ -489,6 +601,11 @@ const ShippingPage = () => {
             onView={(item) => handleViewDetail(item, 'shipping')}
             onEdit={(item) => handleOpenShippingForm(item)}
             onDelete={handleDeleteShipping}
+            filter={shippingFilter}
+            onFilterChange={(filter) => {
+              setShippingFilter(filter);
+              setShippingPage(1); // Reset to page 1 when filter changes
+            }}
           />
         </div>
       </section>
@@ -502,10 +619,29 @@ const ShippingPage = () => {
               <h3 className="text-lg font-semibold text-foreground">Retur Spare Part</h3>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportRetur} size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export Excel
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={isExportingRetur}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExportingRetur ? 'Exporting...' : 'Export'}
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportReturExcel} disabled={isExportingRetur}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export ke Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportReturPDF} disabled={isExportingRetur}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export ke PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button onClick={() => handleOpenReturForm()} size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Tambah Data
@@ -518,6 +654,11 @@ const ShippingPage = () => {
             onView={(item) => handleViewDetail(item, 'retur')}
             onEdit={(item) => handleOpenReturForm(item)}
             onDelete={handleDeleteRetur}
+            filter={returFilter}
+            onFilterChange={(filter) => {
+              setReturFilter(filter);
+              setReturPage(1); // Reset to page 1 when filter changes
+            }}
           />
         </div>
       </section>
