@@ -68,16 +68,6 @@ const App = () => (
               } 
             />
             
-            {/* Shipping Routes */}
-            <Route 
-              path="/shipping" 
-              element={
-                <Suspense fallback={<Loading text="Memuat halaman shipping..." />}>
-                  <ShippingPage />
-                </Suspense>
-              } 
-            />
-            
             {/* SLA Bakti Routes */}
             <Route 
               path="/sla-bakti/upload" 
@@ -132,8 +122,17 @@ const App = () => (
             <Route path="/sla-internal/1" element={<UnderDevelopment title="SLA 1" description="Halaman SLA Internal 1" />} />
             <Route path="/sla-internal/2" element={<UnderDevelopment title="SLA 2" description="Halaman SLA Internal 2" />} />
             <Route path="/sla-internal/3" element={<UnderDevelopment title="SLA 3" description="Halaman SLA Internal 3" />} />
-            
+
             {/* Tools Routes */}
+            <Route path="/tools/tickets" element={<NotFound />} />
+            <Route 
+              path="/tools/shipping" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman shipping..." />}>
+                  <ShippingPage />
+                </Suspense>
+              } 
+            />
             <Route path="/tools/rekap-battery" element={<UnderDevelopment title="Rekap Battery" description="Halaman rekap battery" />} />
             <Route path="/tools/x" element={<UnderDevelopment title="Menu X" description="Halaman tools menu X" />} />
             

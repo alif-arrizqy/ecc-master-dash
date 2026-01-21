@@ -238,6 +238,11 @@ shippingApiClient.interceptors.request.use(
  */
 shippingApiClient.interceptors.response.use(
   (response) => {
+    // Skip validation for blob responses (e.g., Excel export)
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    
     // Check if response has success field and it's false
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       if (!response.data.success) {
@@ -251,11 +256,28 @@ shippingApiClient.interceptors.response.use(
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
-      const message = error.response.data
-        ? (error.response.data as { message?: string })?.message || error.message
-        : error.message;
       
-      console.error(`Shipping API Error [${status}]:`, message);
+      // For blob responses, try to parse error message from blob
+      if (error.config?.responseType === 'blob' && error.response.data instanceof Blob) {
+        // Try to read error message from blob (usually JSON error response)
+        error.response.data.text().then((text) => {
+          try {
+            const errorData = JSON.parse(text);
+            console.error(`Shipping API Error [${status}]:`, errorData.message || error.message);
+          } catch {
+            console.error(`Shipping API Error [${status}]:`, error.message);
+          }
+        }).catch(() => {
+          console.error(`Shipping API Error [${status}]:`, error.message);
+        });
+      } else {
+        // Regular JSON error response
+        const message = error.response.data
+          ? (error.response.data as { message?: string })?.message || error.message
+          : error.message;
+        
+        console.error(`Shipping API Error [${status}]:`, message);
+      }
       
       // You can add specific error handling based on status codes
       switch (status) {

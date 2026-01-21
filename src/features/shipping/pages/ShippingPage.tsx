@@ -15,7 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Download, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Download, Package, Truck, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
 import { ShippingStatistics } from '../components/ShippingStatistics';
 import { ShippingSparePartTable } from '../components/ShippingSparePartTable';
 import { ReturSparePartTable } from '../components/ReturSparePartTable';
@@ -45,13 +52,37 @@ const ShippingPage = () => {
   const [editingShippingId, setEditingShippingId] = useState<number | null>(null);
   const [editingReturId, setEditingReturId] = useState<number | null>(null);
 
+  // Filter state for shipping
+  const [shippingFilter, setShippingFilter] = useState<{
+    status?: string;
+    site_id?: string;
+    province?: string;
+    cluster?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }>({});
+
+  // Filter state for retur
+  const [returFilter, setReturFilter] = useState<{
+    startDate?: string;
+    endDate?: string;
+    shipper?: string;
+    source_spare_part?: string;
+    search?: string;
+  }>({});
+
   // Form data state
   const [shippingFormData, setShippingFormData] = useState<ShippingSparePartFormData>({
     date: new Date().toISOString().split('T')[0],
     site_id: '',
     status: 'request gudang',
   });
-  const [returFormData, setReturFormData] = useState<ReturSparePartFormData>({});
+  const [returFormData, setReturFormData] = useState<ReturSparePartFormData>({
+    date: new Date().toISOString().split('T')[0],
+    shipper: '',
+    source_spare_part: '',
+  });
 
   // Fetch statistics
   const { data: shippingStats, isLoading: isLoadingShippingStats } = useQuery({
@@ -70,8 +101,12 @@ const ShippingPage = () => {
     isLoading: isLoadingShipping,
     refetch: refetchShipping,
   } = useQuery({
-    queryKey: ['shipping-spare-part', shippingPage],
-    queryFn: () => shippingSparePartApi.getAll({ page: shippingPage, limit: 20 }),
+    queryKey: ['shipping-spare-part', shippingPage, shippingFilter],
+    queryFn: () => shippingSparePartApi.getAll({ 
+      page: shippingPage, 
+      limit: 20,
+      ...shippingFilter,
+    }),
   });
 
   // Fetch retur data
@@ -80,8 +115,12 @@ const ShippingPage = () => {
     isLoading: isLoadingRetur,
     refetch: refetchRetur,
   } = useQuery({
-    queryKey: ['return-spare-part', returPage],
-    queryFn: () => returSparePartApi.getAll({ page: returPage, limit: 20 }),
+    queryKey: ['return-spare-part', returPage, returFilter],
+    queryFn: () => returSparePartApi.getAll({ 
+      page: returPage, 
+      limit: 20,
+      ...returFilter,
+    }),
   });
 
   // Create shipping mutation
@@ -136,21 +175,76 @@ const ShippingPage = () => {
 
   // Update status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       status,
     }: {
       id: number;
       status: 'request gudang' | 'proses kirim' | 'selesai';
-    }) => shippingSparePartApi.update(id, { status }),
+    }) => {
+      console.log('Updating status:', { id, status });
+      try {
+        const result = await shippingSparePartApi.update(id, { status });
+        console.log('Status update success:', result);
+        return result;
+      } catch (error) {
+        console.error('Status update error:', error);
+        throw error;
+      }
+    },
     onSuccess: () => {
       toast.success('Status berhasil diupdate');
       queryClient.invalidateQueries({ queryKey: ['shipping-spare-part'] });
       queryClient.invalidateQueries({ queryKey: ['shipping-spare-part-statistics'] });
     },
-    onError: (error) => {
-      toast.error('Gagal mengupdate status', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+    onError: (error: unknown) => {
+      console.error('Update status error details:', error);
+      
+      let errorMessage = 'Gagal mengupdate status';
+      let errorDescription = 'Terjadi kesalahan saat mengupdate status';
+      
+      // Handle Axios error
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; errors?: unknown } } };
+        const responseData = axiosError.response?.data;
+        
+        if (responseData?.message) {
+          errorMessage = 'Gagal mengupdate status';
+          
+          // Check if it's a validation error about status transition
+          if (typeof responseData.message === 'string') {
+            if (responseData.message.includes('SELESAI') || responseData.message.includes('selesai')) {
+              errorDescription = 'Status yang sudah "Selesai" tidak dapat diubah kembali ke status lain.';
+            } else if (responseData.message.includes('status') || responseData.message.includes('Status')) {
+              errorDescription = responseData.message;
+            } else {
+              errorDescription = responseData.message;
+            }
+          }
+          
+          // Check errors array for more details
+          if (responseData.errors && Array.isArray(responseData.errors)) {
+            const statusError = responseData.errors.find(
+              (err: unknown) => 
+                typeof err === 'object' && 
+                err !== null && 
+                'path' in err && 
+                Array.isArray((err as { path: unknown }).path) &&
+                (err as { path: string[] }).path.includes('status')
+            );
+            
+            if (statusError && typeof statusError === 'object' && 'message' in statusError) {
+              errorDescription = String(statusError.message);
+            }
+          }
+        }
+      } else if (error instanceof Error) {
+        errorDescription = error.message;
+      }
+      
+      toast.error(errorMessage, {
+        description: errorDescription,
+        duration: 5000,
       });
     },
   });
@@ -205,42 +299,104 @@ const ShippingPage = () => {
     },
   });
 
-  // Export to excel functions
-  const handleExportShipping = async () => {
+  // Export state
+  const [isExportingShipping, setIsExportingShipping] = useState(false);
+  const [isExportingRetur, setIsExportingRetur] = useState(false);
+
+  // Helper function to download file
+  const downloadFile = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  // Export to Excel functions with filters
+  const handleExportShippingExcel = async () => {
+    setIsExportingShipping(true);
     try {
-      const blob = await shippingSparePartApi.exportToExcel();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `shipping-spare-part-${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Export berhasil');
+      // Convert status to backend format if needed
+      const exportParams: any = { ...shippingFilter };
+      if (exportParams.status) {
+        // Convert to uppercase with underscore if needed
+        const statusMap: Record<string, string> = {
+          'request gudang': 'REQUEST_GUDANG',
+          'proses kirim': 'PROSES_KIRIM',
+          'selesai': 'SELESAI',
+        };
+        exportParams.status = statusMap[exportParams.status.toLowerCase()] || exportParams.status.toUpperCase().replace(/\s+/g, '_');
+      }
+      
+      const result = await shippingSparePartApi.exportToExcel(exportParams);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export Excel berhasil');
     } catch (error) {
-      toast.error('Gagal export data', {
+      toast.error('Gagal export Excel', {
         description: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      setIsExportingShipping(false);
     }
   };
 
-  const handleExportRetur = async () => {
+  const handleExportShippingPDF = async () => {
+    setIsExportingShipping(true);
     try {
-      const blob = await returSparePartApi.exportToExcel();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `retur-spare-part-${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('Export berhasil');
+      // Convert status to backend format if needed
+      const exportParams: any = { ...shippingFilter };
+      if (exportParams.status) {
+        // Convert to uppercase with underscore if needed
+        const statusMap: Record<string, string> = {
+          'request gudang': 'REQUEST_GUDANG',
+          'proses kirim': 'PROSES_KIRIM',
+          'selesai': 'SELESAI',
+        };
+        exportParams.status = statusMap[exportParams.status.toLowerCase()] || exportParams.status.toUpperCase().replace(/\s+/g, '_');
+      }
+      
+      const result = await shippingSparePartApi.exportToPDF(exportParams);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export PDF berhasil');
     } catch (error) {
-      toast.error('Gagal export data', {
+      toast.error('Gagal export PDF', {
         description: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      setIsExportingShipping(false);
+    }
+  };
+
+  const handleExportReturExcel = async () => {
+    setIsExportingRetur(true);
+    try {
+      const result = await returSparePartApi.exportToExcel(returFilter);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export Excel berhasil');
+    } catch (error) {
+      toast.error('Gagal export Excel', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsExportingRetur(false);
+    }
+  };
+
+  const handleExportReturPDF = async () => {
+    setIsExportingRetur(true);
+    try {
+      const result = await returSparePartApi.exportToPDF(returFilter);
+      downloadFile(result.blob, result.filename);
+      toast.success('Export PDF berhasil');
+    } catch (error) {
+      toast.error('Gagal export PDF', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setIsExportingRetur(false);
     }
   };
 
@@ -255,36 +411,76 @@ const ShippingPage = () => {
   };
 
   const resetReturForm = () => {
-    setReturFormData({});
+    setReturFormData({
+      date: new Date().toISOString().split('T')[0],
+      shipper: '',
+      source_spare_part: '',
+    });
     setEditingReturId(null);
   };
+
+  // State untuk existing images (untuk edit mode)
+  const [existingTicketImage, setExistingTicketImage] = useState<string | undefined>();
+  const [existingResiImage, setExistingResiImage] = useState<string | undefined>();
+  const [existingReturImage, setExistingReturImage] = useState<string | Array<string> | null>(null);
 
   // Handlers
   const handleOpenShippingForm = (item?: ShippingSparePart) => {
     if (item) {
+      // Normalize status untuk form
+      const normalizeStatus = (status: string): 'request gudang' | 'proses kirim' | 'selesai' => {
+        if (status === 'REQUEST_GUDANG' || status === 'request gudang') return 'request gudang';
+        if (status === 'PROSES_KIRIM' || status === 'proses kirim') return 'proses kirim';
+        if (status === 'SELESAI' || status === 'selesai') return 'selesai';
+        return 'request gudang';
+      };
+
       setShippingFormData({
         date: item.date,
-        site_id: item.site_id,
-        address_id: item.address_id,
+        site_id: item.site?.site_id || '',
+        address_id: item.address?.address_id,
         sparepart_note: item.sparepart_note,
-        problem_id: item.problem_id,
-        ticket_number: item.ticket_number,
-        status: item.status,
-        pr_code: item.pr_code,
+        problem_id: item.problem?.problem_id,
+        ticket_number: item.ticket?.ticket_number,
+        resi_number: item.resi?.resi_number,
+        status: normalizeStatus(item.status),
+        pr_code: item.site?.pr_code || undefined,
       });
+      // Set existing images untuk preview
+      setExistingTicketImage(item.ticket?.ticket_image);
+      setExistingResiImage(item.resi?.resi_image);
       setEditingShippingId(item.id);
     } else {
       resetShippingForm();
+      setExistingTicketImage(undefined);
+      setExistingResiImage(undefined);
     }
     setShippingFormOpen(true);
   };
 
   const handleOpenReturForm = (item?: ReturSparePart) => {
     if (item) {
-      setReturFormData(item as ReturSparePartFormData);
+      // Format list_spare_part jika array
+      let listSparePart = item.list_spare_part;
+      if (Array.isArray(listSparePart)) {
+        listSparePart = JSON.stringify(listSparePart);
+      } else if (typeof listSparePart !== 'string') {
+        listSparePart = String(listSparePart || '');
+      }
+      
+      setReturFormData({
+        date: item.date,
+        shipper: item.shipper,
+        source_spare_part: item.source_spare_part,
+        list_spare_part: listSparePart,
+        notes: item.notes,
+      });
+      // Set existing image untuk preview
+      setExistingReturImage(item.image || null);
       setEditingReturId(item.id);
     } else {
       resetReturForm();
+      setExistingReturImage(null);
     }
     setReturFormOpen(true);
   };
@@ -296,6 +492,14 @@ const ShippingPage = () => {
   };
 
   const handleShippingSubmit = (data: ShippingSparePartFormData) => {
+    // Validasi: resi_number wajib diisi untuk status "proses kirim" atau "selesai"
+    if ((data.status === 'proses kirim' || data.status === 'selesai') && !data.resi_number?.trim()) {
+      toast.error('Resi Number wajib diisi', {
+        description: 'Resi Number harus diisi untuk status "Proses Kirim" dan "Selesai".',
+      });
+      return;
+    }
+
     if (editingShippingId) {
       updateShippingMutation.mutate({ id: editingShippingId, data });
     } else {
@@ -323,79 +527,141 @@ const ShippingPage = () => {
     }
   };
 
-  const handleStatusChange = (id: number, status: 'request gudang' | 'proses kirim' | 'selesai') => {
-    updateStatusMutation.mutate({ id, status });
-  };
-
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Shipping & Retur Spare Part</h1>
+    <div className="container mx-auto px-4 py-8">
+      {/* Page Header */}
+      <div className="mb-8 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
+              <Package className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Shipping & Retur Spare Part
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Kelola data shipping dan retur spare part
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Statistics */}
-      <ShippingStatistics
-        shippingStats={shippingStats}
-        returStats={returStats}
-        isLoading={isLoadingShippingStats || isLoadingReturStats}
-      />
+      <section className="mb-6 animate-slide-up">
+        <ShippingStatistics
+          shippingStats={shippingStats}
+          returStats={returStats}
+          isLoading={isLoadingShippingStats || isLoadingReturStats}
+        />
+      </section>
 
       {/* Shipping Spare Part Section */}
-      <Card className="card-shadow animate-slide-up">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Shipping Spare Part</CardTitle>
+      <section className="mb-6 animate-slide-up">
+        <div className="bg-card rounded-lg p-6 border shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Shipping Spare Part</h3>
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportShipping}>
-                <Download className="h-4 w-4 mr-2" />
-                Export Excel
-              </Button>
-              <Button onClick={() => handleOpenShippingForm()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={isExportingShipping}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExportingShipping ? 'Exporting...' : 'Export'}
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportShippingExcel} disabled={isExportingShipping}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export ke Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportShippingPDF} disabled={isExportingShipping}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export ke PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={() => handleOpenShippingForm()} size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Tambah Data
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
           <ShippingSparePartTable
-            data={shippingData?.data || []}
+            data={Array.isArray(shippingData?.data) ? shippingData.data : []}
             isLoading={isLoadingShipping}
             onView={(item) => handleViewDetail(item, 'shipping')}
             onEdit={(item) => handleOpenShippingForm(item)}
             onDelete={handleDeleteShipping}
-            onStatusChange={handleStatusChange}
+            filter={shippingFilter}
+            onFilterChange={(filter) => {
+              setShippingFilter(filter);
+              setShippingPage(1); // Reset to page 1 when filter changes
+            }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Retur Spare Part Section */}
-      <Card className="card-shadow animate-slide-up">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Retur Spare Part</CardTitle>
+      <section className="mb-6 animate-slide-up">
+        <div className="bg-card rounded-lg p-6 border shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Retur Spare Part</h3>
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportRetur}>
-                <Download className="h-4 w-4 mr-2" />
-                Export Excel
-              </Button>
-              <Button onClick={() => handleOpenReturForm()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={isExportingRetur}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExportingRetur ? 'Exporting...' : 'Export'}
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportReturExcel} disabled={isExportingRetur}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export ke Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportReturPDF} disabled={isExportingRetur}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export ke PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={() => handleOpenReturForm()} size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Tambah Data
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
           <ReturSparePartTable
-            data={returData?.data || []}
+            data={Array.isArray(returData?.data) ? returData.data : []}
             isLoading={isLoadingRetur}
             onView={(item) => handleViewDetail(item, 'retur')}
             onEdit={(item) => handleOpenReturForm(item)}
             onDelete={handleDeleteRetur}
+            filter={returFilter}
+            onFilterChange={(filter) => {
+              setReturFilter(filter);
+              setReturPage(1); // Reset to page 1 when filter changes
+            }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Shipping Form Dialog */}
       <Dialog open={shippingFormOpen} onOpenChange={setShippingFormOpen}>
@@ -419,9 +685,11 @@ const ShippingPage = () => {
             onChange={setShippingFormData}
             onSubmit={handleShippingSubmit}
             onCancel={() => {
-              setShippingFormOpen(false);
               resetShippingForm();
+              setShippingFormOpen(false);
             }}
+            existingTicketImage={existingTicketImage}
+            existingResiImage={existingResiImage}
           />
         </DialogContent>
       </Dialog>
@@ -448,7 +716,9 @@ const ShippingPage = () => {
             onCancel={() => {
               setReturFormOpen(false);
               resetReturForm();
+              setExistingReturImage(null);
             }}
+            existingImage={existingReturImage}
           />
         </DialogContent>
       </Dialog>

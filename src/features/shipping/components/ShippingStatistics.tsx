@@ -6,11 +6,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, Truck, CheckCircle, RotateCcw, AlertCircle } from 'lucide-react';
 import { Loading } from '@/components/ui/loading';
-import type { ShippingStatistics } from '../types/shipping.types';
+import type { ShippingStatistics as IShippingStatistics } from '../types/shipping.types';
 
 interface ShippingStatisticsProps {
-  shippingStats?: ShippingStatistics;
-  returStats?: ShippingStatistics;
+  shippingStats?: IShippingStatistics;
+  returStats?: IShippingStatistics;
   isLoading?: boolean;
   error?: Error | null;
 }
