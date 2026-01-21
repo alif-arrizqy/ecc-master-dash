@@ -9,6 +9,7 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 const SLA_SERVICES_URL = import.meta.env.VITE_SLA_SERVICES_URL;
 const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL;
 const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
+const SHIPPING_SERVICES_URL = import.meta.env.VITE_SHIPPING_SERVICES_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
   console.warn('VITE_SLA_SERVICES_URL is not set.');
@@ -16,6 +17,10 @@ if (!import.meta.env.VITE_SLA_SERVICES_URL) {
 
 if (!import.meta.env.VITE_SITES_SERVICES_URL) {
   console.warn('VITE_SITES_SERVICES_URL is not set.');
+}
+
+if (!import.meta.env.VITE_SHIPPING_SERVICES_URL) {
+  console.warn('VITE_SHIPPING_SERVICES_URL is not set.');
 }
 
 export type BatteryVersion = 'talis5' | 'mix' | 'jspro';
@@ -58,6 +63,17 @@ export const sitesApiClient: AxiosInstance = axios.create({
  */
 export const monitoringApiClient: AxiosInstance = axios.create({
   baseURL: MONITORING_SERVICES_URL,
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Create axios instance for Shipping Services
+ */
+export const shippingApiClient: AxiosInstance = axios.create({
+  baseURL: SHIPPING_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -199,6 +215,93 @@ sitesApiClient.interceptors.response.use(
     } else {
       // Something else happened
       console.error('Sites API Error:', error.message);
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Request interceptor for Shipping Services
+ */
+shippingApiClient.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Response interceptor for Shipping Services
+ */
+shippingApiClient.interceptors.response.use(
+  (response) => {
+    // Skip validation for blob responses (e.g., Excel export)
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    
+    // Check if response has success field and it's false
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      if (!response.data.success) {
+        throw new Error('API returned unsuccessful response');
+      }
+    }
+    return response;
+  },
+  (error: AxiosError) => {
+    // Handle different error types
+    if (error.response) {
+      // Server responded with error status
+      const status = error.response.status;
+      
+      // For blob responses, try to parse error message from blob
+      if (error.config?.responseType === 'blob' && error.response.data instanceof Blob) {
+        // Try to read error message from blob (usually JSON error response)
+        error.response.data.text().then((text) => {
+          try {
+            const errorData = JSON.parse(text);
+            console.error(`Shipping API Error [${status}]:`, errorData.message || error.message);
+          } catch {
+            console.error(`Shipping API Error [${status}]:`, error.message);
+          }
+        }).catch(() => {
+          console.error(`Shipping API Error [${status}]:`, error.message);
+        });
+      } else {
+        // Regular JSON error response
+        const message = error.response.data
+          ? (error.response.data as { message?: string })?.message || error.message
+          : error.message;
+        
+        console.error(`Shipping API Error [${status}]:`, message);
+      }
+      
+      // You can add specific error handling based on status codes
+      switch (status) {
+        case 401:
+          // Handle unauthorized - maybe redirect to login
+          break;
+        case 403:
+          // Handle forbidden
+          break;
+        case 404:
+          // Handle not found
+          break;
+        case 500:
+          // Handle server error
+          break;
+        default:
+          break;
+      }
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error('Shipping API Error: No response received', error.request);
+    } else {
+      // Something else happened
+      console.error('Shipping API Error:', error.message);
     }
     
     return Promise.reject(error);

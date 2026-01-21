@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Site } from '../types';
+import { Site } from '@/features/sites/types';
 
 interface SiteDetailsDialogProps {
   site: Site | null;
