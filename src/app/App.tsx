@@ -29,6 +29,9 @@ const MonitoringDashboard = lazy(() => import("../features/monitoring/pages/Moni
 // Shipping Pages
 const ShippingPage = lazy(() => import("../features/shipping/pages/ShippingPage").then(m => ({ default: m.default })));
 
+// Sparepart Pages
+const SparepartPage = lazy(() => import("../features/sparepart/pages/SparepartPage").then(m => ({ default: m.default })));
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -130,6 +133,14 @@ const App = () => (
               element={
                 <Suspense fallback={<Loading text="Memuat halaman shipping..." />}>
                   <ShippingPage />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/tools/sparepart" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman sparepart..." />}>
+                  <SparepartPage />
                 </Suspense>
               } 
             />
