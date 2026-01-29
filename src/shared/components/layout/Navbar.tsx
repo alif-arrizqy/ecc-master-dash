@@ -71,6 +71,7 @@ const Navbar = () => {
       children: [
         { to: '/tools/tickets', label: 'Tickets' },
         { to: '/tools/shipping', label: 'Shipping' },
+        { to: '/tools/sparepart', label: 'Sparepart' },
       ]
     },
   ];
