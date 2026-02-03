@@ -7,6 +7,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { useLocation } from 'react-router-dom';
 
@@ -24,11 +27,8 @@ const Navbar = () => {
     {
       label: 'Monitoring',
       icon: Activity,
-      hasChildren: true,
-      children: [
-        { to: '/monitoring/x', label: 'Menu X' },
-        { to: '/monitoring/y', label: 'Menu Y' },
-      ]
+      hasChildren: false,
+      to: '/monitoring'
     },
     {
       label: 'Sites',
@@ -37,26 +37,31 @@ const Navbar = () => {
       to: '/sites'
     },
     {
-      label: 'SLA Bakti',
+      label: 'SLA',
       icon: BarChart3,
       hasChildren: true,
       children: [
-        { to: '/sla-bakti/upload', label: 'Upload File Excel' },
-        { to: '/sla-bakti/master', label: 'SLA Master Data' },
-        { to: '/sla-bakti/problem', label: 'SLA Problem' },
-        { to: '/sla-bakti/reason', label: 'SLA Reason' },
-        { to: '/sla-bakti/history-gamas', label: 'History GAMAS' },
-        { to: '/sla-bakti/raw', label: 'Raw SLA' },
-      ]
-    },
-    {
-      label: 'SLA Internal',
-      icon: Database,
-      hasChildren: true,
-      children: [
-        { to: '/sla-internal/1', label: 'SLA 1' },
-        { to: '/sla-internal/2', label: 'SLA 2' },
-        { to: '/sla-internal/3', label: 'SLA 3' },
+        { 
+          label: 'SLA Bakti', 
+          hasChildren: true,
+          children: [
+            { to: '/sla-bakti/upload', label: 'Upload File Excel' },
+            { to: '/sla-bakti/master', label: 'SLA Master Data' },
+            { to: '/sla-bakti/problem', label: 'SLA Problem' },
+            { to: '/sla-bakti/reason', label: 'SLA Reason' },
+            { to: '/sla-bakti/history-gamas', label: 'History GAMAS' },
+            { to: '/sla-bakti/raw', label: 'Raw SLA' },
+          ]
+        },
+        { 
+          label: 'SLA Internal', 
+          hasChildren: true,
+          children: [
+            { to: '/sla-internal/1', label: 'SLA 1' },
+            { to: '/sla-internal/2', label: 'SLA 2' },
+            { to: '/sla-internal/3', label: 'SLA 3' },
+          ]
+        },
       ]
     },
     {
@@ -64,15 +69,23 @@ const Navbar = () => {
       icon: Wrench,
       hasChildren: true,
       children: [
-        { to: '/tools/rekap-battery', label: 'Rekap Battery' },
-        { to: '/tools/x', label: 'Menu X' },
+        { to: '/tools/tickets', label: 'Tickets' },
+        { to: '/tools/shipping', label: 'Shipping' },
+        { to: '/tools/sparepart', label: 'Sparepart' },
       ]
     },
   ];
 
   const isActiveParent = (item: typeof navItems[0]) => {
     if (!item.hasChildren) return false;
-    return item.children?.some(child => location.pathname === child.to || location.pathname.startsWith(child.to + '/'));
+    return item.children?.some(child => {
+      if (child.hasChildren && child.children) {
+        return child.children.some(subChild => 
+          location.pathname === subChild.to || location.pathname.startsWith(subChild.to + '/')
+        );
+      }
+      return location.pathname === child.to || location.pathname.startsWith(child.to + '/');
+    });
   };
   
   return (
@@ -115,19 +128,45 @@ const Navbar = () => {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-56">
-                      {item.children.map((child) => (
-                        <DropdownMenuItem key={child.to} asChild>
-                          <NavLink
-                            to={child.to}
-                            className={cn(
-                              "flex items-center gap-2 cursor-pointer",
-                              location.pathname === child.to && "bg-primary/10 text-primary"
-                            )}
-                          >
-                            {child.label}
-                          </NavLink>
-                        </DropdownMenuItem>
-                      ))}
+                      {item.children.map((child) => {
+                        if (child.hasChildren && child.children) {
+                          return (
+                            <DropdownMenuSub key={child.label}>
+                              <DropdownMenuSubTrigger>
+                                {child.label}
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                {child.children.map((subChild) => (
+                                  <DropdownMenuItem key={subChild.to} asChild>
+                                    <NavLink
+                                      to={subChild.to}
+                                      className={cn(
+                                        "flex items-center gap-2 cursor-pointer",
+                                        location.pathname === subChild.to && "bg-primary/10 text-primary"
+                                      )}
+                                    >
+                                      {subChild.label}
+                                    </NavLink>
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          );
+                        }
+                        return (
+                          <DropdownMenuItem key={child.to} asChild>
+                            <NavLink
+                              to={child.to}
+                              className={cn(
+                                "flex items-center gap-2 cursor-pointer",
+                                location.pathname === child.to && "bg-primary/10 text-primary"
+                              )}
+                            >
+                              {child.label}
+                            </NavLink>
+                          </DropdownMenuItem>
+                        );
+                      })}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 );
@@ -176,17 +215,41 @@ const Navbar = () => {
                       {item.label}
                     </div>
                     <div className="ml-6 flex flex-col gap-1">
-                      {item.children.map((child) => (
-                        <NavLink
-                          key={child.to}
-                          to={child.to}
-                          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          activeClassName="bg-primary/10 text-primary"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          {child.label}
-                        </NavLink>
-                      ))}
+                      {item.children.map((child) => {
+                        if (child.hasChildren && child.children) {
+                          return (
+                            <div key={child.label} className="flex flex-col">
+                              <div className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground">
+                                {child.label}
+                              </div>
+                              <div className="ml-6 flex flex-col gap-1">
+                                {child.children.map((subChild) => (
+                                  <NavLink
+                                    key={subChild.to}
+                                    to={subChild.to}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                    activeClassName="bg-primary/10 text-primary"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                  >
+                                    {subChild.label}
+                                  </NavLink>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <NavLink
+                            key={child.to}
+                            to={child.to}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            activeClassName="bg-primary/10 text-primary"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            {child.label}
+                          </NavLink>
+                        );
+                      })}
                     </div>
                   </div>
                 );

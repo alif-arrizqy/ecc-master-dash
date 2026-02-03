@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Copy, Check, TriangleAlert  } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { SlaBelow95Section } from '@/types/api';
+import { SlaBelow95Section } from '@/shared/types/api';
 import { format, parse } from 'date-fns';
 import { id } from 'date-fns/locale';
 

@@ -14,7 +14,7 @@ import {
   SLAReportDetail,
   SiteMaster,
   PotensiSPSitesResponse,
-} from '@/types/api';
+} from '@/shared/types/api';
 import { DailySLA, WeeklySLA } from '@/shared/data/mockData';
 
 /**
