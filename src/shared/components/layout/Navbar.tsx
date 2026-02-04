@@ -70,8 +70,8 @@ const Navbar = () => {
       hasChildren: true,
       children: [
         { to: '/tools/tickets', label: 'Tickets' },
-        { to: '/tools/tracking', label: 'Tracking' },
-        { to: '/tools/x', label: 'Menu X' },
+        { to: '/tools/shipping', label: 'Shipping' },
+        { to: '/tools/sparepart', label: 'Sparepart' },
       ]
     },
   ];
