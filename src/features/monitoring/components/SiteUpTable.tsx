@@ -19,8 +19,18 @@ interface SiteUpTableProps {
   onSiteIdFilter?: (siteName: string) => void; // Changed to siteName for API filter
 }
 
-type SortField = 'siteId' | 'siteName' | 'slaAvg' | 'statusSLA' | 'problem';
+type SortField = 'siteName' | 'slaAvg' | 'statusSLA' | 'problem';
 type SortOrder = 'asc' | 'desc' | null;
+
+const MAX_PROBLEM_DISPLAY_LENGTH = 45;
+
+function formatProblemList(problem: string[] | undefined, maxLen: number = MAX_PROBLEM_DISPLAY_LENGTH): { display: string; full: string } {
+  const list = problem?.filter(Boolean) || [];
+  if (list.length === 0) return { display: '-', full: '' };
+  const full = list.join(', ');
+  const display = full.length > maxLen ? `${full.slice(0, maxLen)}...` : full;
+  return { display, full };
+}
 
 export const SiteUpTable = ({
   data,
@@ -60,8 +70,7 @@ export const SiteUpTable = ({
     let filtered = data;
     if (siteNameFilter.trim()) {
       filtered = data.filter(site => 
-        site.siteName.toLowerCase().includes(siteNameFilter.toLowerCase()) ||
-        site.siteId.toLowerCase().includes(siteNameFilter.toLowerCase())
+        site.siteName.toLowerCase().includes(siteNameFilter.toLowerCase())
       );
     }
 
@@ -75,10 +84,6 @@ export const SiteUpTable = ({
       let bValue: string | number;
 
       switch (sortField) {
-        case 'siteId':
-          aValue = a.siteId.toLowerCase();
-          bValue = b.siteId.toLowerCase();
-          break;
         case 'siteName':
           aValue = a.siteName.toLowerCase();
           bValue = b.siteName.toLowerCase();
@@ -191,10 +196,8 @@ export const SiteUpTable = ({
   };
 
   const getSLAColor = (sla?: number) => {
-    if (!sla) return 'text-muted-foreground';
     if (sla >= 95.5) return 'text-status-good';
-    if (sla >= 90) return 'text-status-warning';
-    if (sla >= 80) return 'text-orange-600 dark:text-orange-500';
+    if (sla >= 70) return 'text-status-warning';
     return 'text-status-danger';
   };
 
@@ -214,7 +217,6 @@ export const SiteUpTable = ({
   };
 
   const columns: { key: SortField; label: string }[] = [
-    { key: 'siteId', label: 'Site ID' },
     { key: 'siteName', label: 'Site Name' },
     { key: 'slaAvg', label: 'SLA AVG' },
     { key: 'statusSLA', label: 'Status SLA' },
@@ -310,16 +312,13 @@ export const SiteUpTable = ({
                 ) : (
                   paginatedData.map((site) => {
                     const slaStatus = site.statusSLA || getSLAStatus(site.slaAvg);
-                    const problemCount = (site.problem || []).length;
+                    const problemDisplay = formatProblemList(site.problem);
                     return (
                       <tr
                         key={site.id}
                         className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
-                      >
+                        >
                         <td className="py-3 px-4 text-sm font-medium text-foreground">
-                          {site.siteId}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
                           {site.siteName}
                         </td>
                         <td className={cn("py-3 px-4 text-sm font-semibold", getSLAColor(site.slaAvg))}>
@@ -333,14 +332,12 @@ export const SiteUpTable = ({
                             {slaStatus}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-sm">
-                          <span className={cn(
-                            "px-2 py-1 rounded text-xs font-medium",
-                            problemCount > 0
-                              ? "bg-status-danger/10 text-status-danger"
-                              : "bg-muted text-muted-foreground"
-                          )}>
-                            {problemCount}
+                        <td className="py-3 px-4 text-sm max-w-[200px]">
+                          <span
+                            className="block truncate text-sm font-medium"
+                            title={problemDisplay.full || undefined}
+                          >
+                            {problemDisplay.display}
                           </span>
                         </td>
                         <td className="py-3 px-4">
