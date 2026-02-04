@@ -132,8 +132,11 @@ export const shippingSparePartApi = {
     formData.append('site_id', data.site_id);
     if (data.address_id) formData.append('address_id', String(data.address_id));
     if (data.sparepart_note) formData.append('sparepart_note', data.sparepart_note);
-    if (data.problem_id) formData.append('problem_id', String(data.problem_id));
-    if (data.problem_new) formData.append('problem_new', data.problem_new);
+    if (data.problem_new?.trim()) {
+      formData.append('problem_name', data.problem_new.trim());
+    } else if (data.problem_id) {
+      formData.append('problem_id', String(data.problem_id));
+    }
     if (data.ticket_number) formData.append('ticket_number', data.ticket_number);
     if (data.ticket_image) formData.append('ticket_image', data.ticket_image);
     if (data.resi_number) formData.append('resi_number', data.resi_number);
@@ -171,19 +174,32 @@ export const shippingSparePartApi = {
   /**
    * Update shipping spare part
    * PATCH /api/v1/shipping-spare-part/:id
-   * Backend hanya menerima: resi_number, resi_image, status
+   * Backend menerima: ticket_number, ticket_image, resi_number, resi_image, status, address_id, problem_id, problem_name
    */
   update: async (id: number, data: Partial<ShippingSparePartFormData>): Promise<ShippingSparePart> => {
     const formData = new FormData();
-    
-    // Hanya kirim field yang diizinkan oleh backend (sesuai ShippingSparePartUpdateSchema)
+
+    if (data.ticket_number != null && data.ticket_number !== '') {
+      formData.append('ticket_number', data.ticket_number);
+    }
+    if (data.ticket_image) {
+      formData.append('ticket_image', data.ticket_image);
+    }
     if (data.resi_number) {
       formData.append('resi_number', data.resi_number);
     }
     if (data.resi_image) {
       formData.append('resi_image', data.resi_image);
     }
-    
+    if (data.address_id != null && data.address_id > 0) {
+      formData.append('address_id', String(data.address_id));
+    }
+    if (data.problem_new?.trim()) {
+      formData.append('problem_name', data.problem_new.trim());
+    } else if (data.problem_id != null && data.problem_id > 0) {
+      formData.append('problem_id', String(data.problem_id));
+    }
+
     if (data.status) {
       // Convert status to uppercase with underscore format for backend
       let statusValue: string;
@@ -487,10 +503,11 @@ export const problemMasterApi = {
    * Create problem master
    * POST /api/v1/problem-master
    */
-  create: async (data: { problem: string }): Promise<ProblemMaster> => {
+  create: async (data: { problem_name: string } | { problem: string }): Promise<ProblemMaster> => {
+    const body = 'problem_name' in data ? data : { problem_name: data.problem };
     const response = await shippingApiClient.post<ApiResponse<ProblemMaster>>(
       '/api/v1/problem-master',
-      data
+      body
     );
     return response.data.data;
   },
@@ -499,10 +516,11 @@ export const problemMasterApi = {
    * Update problem master
    * PUT /api/v1/problem-master/:id
    */
-  update: async (id: number, data: { problem: string }): Promise<ProblemMaster> => {
+  update: async (id: number, data: { problem_name: string } | { problem: string }): Promise<ProblemMaster> => {
+    const body = 'problem_name' in data ? data : { problem_name: data.problem };
     const response = await shippingApiClient.put<ApiResponse<ProblemMaster>>(
       `/api/v1/problem-master/${id}`,
-      data
+      body
     );
     return response.data.data;
   },
