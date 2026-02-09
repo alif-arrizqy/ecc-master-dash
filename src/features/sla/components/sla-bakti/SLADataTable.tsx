@@ -118,7 +118,7 @@ const SLADataTable = () => {
         return 'bg-status-warning/10 text-status-warning';
       case 'SNMP':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'Power':
+      case 'POWER':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
       case 'Other':
         return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400';
