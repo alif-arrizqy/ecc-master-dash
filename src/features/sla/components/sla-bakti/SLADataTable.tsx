@@ -73,6 +73,8 @@ const SLADataTable = () => {
     };
   } | null>(null);
   const [searchDebounce, setSearchDebounce] = useState('');
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureProgress, setCaptureProgress] = useState<string>('');
   const tableRef = useRef<HTMLTableElement | null>(null);
   const tableWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -118,7 +120,7 @@ const SLADataTable = () => {
         return 'bg-status-warning/10 text-status-warning';
       case 'SNMP':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'Power':
+      case 'POWER':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
       case 'Other':
         return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400';
@@ -358,59 +360,295 @@ const SLADataTable = () => {
 
   const hasActiveFilters = searchTerm || batteryFilter !== 'all' || provinceFilter !== 'all' || statusSPFilter !== 'all' || statusSLAFilter !== 'all' || picFilter !== 'all' || dateRange.from || dateRange.to || slaMin !== undefined || slaMax !== undefined;
 
-  // Capture table as PNG: kolom Action dihilangkan, ukuran fit tabel, rapi & jelas
+  // Capture table as PNG: fetch all pages, combine data, generate full image
   const captureTable = async () => {
-    const wrapper = tableWrapperRef.current;
-    if (!wrapper || !tableRef.current) return;
+    if (!tableRef.current) return;
+    
+    setIsCapturing(true);
+    setCaptureProgress('Preparing to capture...');
+    
     try {
+      // Step 1: Fetch all pages from API
+      setCaptureProgress('Fetching all data...');
+      const allSites = await fetchAllPages();
+      
+      if (allSites.length === 0) {
+        console.warn('No data to capture');
+        return;
+      }
+      
+      // Step 2: Create temporary hidden container with full table
+      setCaptureProgress(`Rendering ${allSites.length} rows...`);
+      const tempContainer = createTempTableContainer(allSites);
+      document.body.appendChild(tempContainer);
+      
+      // Wait for DOM to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Step 3: Capture with html2canvas
+      setCaptureProgress('Generating image...');
       const html2canvasModule = await import('html2canvas');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const html2canvas = (html2canvasModule as any).default ?? (html2canvasModule as any);
-
-      const scale = 2; // agar teks jelas, tidak terlalu kecil
-      const canvas = await html2canvas(wrapper, {
+      
+      const scale = 2;
+      const canvas = await html2canvas(tempContainer.querySelector('.table-wrapper')!, {
         scale,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
         allowTaint: true,
-        onclone: (_clonedDoc, clonedElement) => {
-          clonedElement.style.overflow = 'visible';
-          clonedElement.style.width = 'auto';
-          clonedElement.style.padding = '12px';
-          const clonedTable = clonedElement.querySelector('table');
-          if (!clonedTable) return;
-          const tbl = clonedTable as HTMLElement;
-          tbl.style.borderCollapse = 'collapse';
-          tbl.style.fontSize = '13px';
-          const lastTh = clonedTable.querySelector('thead tr')?.lastElementChild as HTMLElement | null;
-          if (lastTh) lastTh.style.display = 'none';
-          clonedTable.querySelectorAll('tbody tr').forEach((tr) => {
-            const lastTd = tr.lastElementChild as HTMLElement | null;
-            if (lastTd) lastTd.style.display = 'none';
-          });
-          clonedTable.querySelectorAll('th, td').forEach((cell) => {
-            const el = cell as HTMLElement;
-            el.style.padding = '6px 10px';
-          });
-        },
       });
-
-      if (!canvas) return;
-      canvas.toBlob((blob: Blob | null) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `sla-table-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-      }, 'image/png');
+      
+      // Step 4: Download image
+      setCaptureProgress('Downloading...');
+      if (canvas) {
+        canvas.toBlob((blob: Blob | null) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `sla-table-full-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      }
+      
+      // Step 5: Cleanup
+      document.body.removeChild(tempContainer);
+      
     } catch (err) {
       console.error('Failed to capture table:', err);
+      setError(err instanceof Error ? err.message : 'Failed to capture table');
+    } finally {
+      setIsCapturing(false);
+      setCaptureProgress('');
     }
+  };
+  
+  // Helper: Fetch all pages from API
+  const fetchAllPages = async (): Promise<APISite[]> => {
+    const allSites: APISite[] = [];
+    
+    // Calculate date range
+    const defaultDateRange = getSLADateRange();
+    const startDate = dateRange.from 
+      ? format(dateRange.from, 'yyyy-MM-dd')
+      : defaultDateRange.startDate;
+    const endDate = dateRange.to
+      ? format(dateRange.to, 'yyyy-MM-dd')
+      : defaultDateRange.endDate;
+    
+    // Map filters to API format
+    let batteryVersion: string | undefined;
+    if (batteryFilter !== 'all') {
+      const batteryVersionMap: Record<string, string> = {
+        'Talis5 Full': 'talis5',
+        'Talis5 Mix': 'mix',
+        'JS PRO': 'jspro',
+      };
+      batteryVersion = batteryVersionMap[batteryFilter] || batteryFilter;
+    }
+    
+    let statusSP: string | undefined;
+    if (statusSPFilter !== 'all') {
+      statusSP = statusSPFilter;
+    }
+    
+    let statusSLA: string | undefined;
+    if (statusSLAFilter !== 'all') {
+      const statusSLAMap: Record<string, string> = {
+        'Meet SLA': 'good',
+        'Fair': 'warning',
+        'Bad': 'bad',
+        'Very Bad': 'very_bad',
+      };
+      statusSLA = statusSLAMap[statusSLAFilter] || statusSLAFilter;
+    }
+    
+    // Fetch first page to get total pages
+    const firstPageResult = await slaApi.getSLAMasterData({
+      startDate,
+      endDate,
+      page: 1,
+      limit: ITEMS_PER_PAGE,
+      batteryVersion,
+      province: provinceFilter !== 'all' ? provinceFilter : undefined,
+      statusSP,
+      statusSLA,
+      pic: picFilter !== 'all' ? picFilter : undefined,
+      siteName: searchDebounce || undefined,
+      slaMin: slaMin !== undefined ? slaMin : undefined,
+      slaMax: slaMax !== undefined ? slaMax : undefined,
+    });
+    
+    allSites.push(...(firstPageResult.data.sites || []));
+    const totalPages = firstPageResult.pagination?.totalPages || 1;
+    
+    // Fetch remaining pages
+    for (let page = 2; page <= totalPages; page++) {
+      setCaptureProgress(`Fetching page ${page} of ${totalPages}...`);
+      
+      const result = await slaApi.getSLAMasterData({
+        startDate,
+        endDate,
+        page,
+        limit: ITEMS_PER_PAGE,
+        batteryVersion,
+        province: provinceFilter !== 'all' ? provinceFilter : undefined,
+        statusSP,
+        statusSLA,
+        pic: picFilter !== 'all' ? picFilter : undefined,
+        siteName: searchDebounce || undefined,
+        slaMin: slaMin !== undefined ? slaMin : undefined,
+        slaMax: slaMax !== undefined ? slaMax : undefined,
+      });
+      
+      allSites.push(...(result.data.sites || []));
+    }
+    
+    return allSites;
+  };
+  
+  // Helper: Create temporary table container with all rows
+  const createTempTableContainer = (allSites: APISite[]): HTMLDivElement => {
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = 'max-content';
+    
+    // Map API sites to component format
+    const mappedSites = allSites.map((site): Site & { pic: string; problems: unknown[]; slaStatus: SLAStatus } => {
+      const siteName = site.siteName || site.name || site.site_name || 'Unknown';
+      const province = site.province || 'Unknown';
+      
+      const apiBatteryVersion = (site.batteryVersion || site.battery_version || '').toLowerCase();
+      const batteryVersionMap: Record<string, 'Talis5 Full' | 'Talis5 Mix' | 'JS PRO'> = {
+        'talis5': 'Talis5 Full',
+        'mix': 'Talis5 Mix',
+        'jspro': 'JS PRO',
+        'js pro': 'JS PRO',
+      };
+      const batteryVersion = batteryVersionMap[apiBatteryVersion] || 'Talis5 Full';
+      
+      const slaAvg = site.siteSla?.slaAverage || site.slaAvg || site.sla_avg || 0;
+      const status = (site.siteSla?.statusSP || site.status || 'Clear SP') as 'Potensi SP' | 'Clear SP';
+      const problems = site.problem || [];
+      const slaStatus = getSLAStatus(slaAvg);
+      const picLabels = getUniquePics(problems);
+      const pic = picLabels.length > 0 ? picLabels.join(', ') : '-';
+      
+      const dailySla = site.siteSla?.dailySla?.map((day, index) => ({
+        day: index + 1,
+        sla: day.sla,
+      })) || [];
+      
+      return {
+        id: site.siteId || siteName,
+        siteName,
+        province,
+        batteryVersion,
+        installDate: (site.talisInstalled as string) || new Date().toISOString(),
+        slaAvg,
+        status,
+        dailySla,
+        pic,
+        problems,
+        slaStatus,
+      };
+    });
+    
+    // Apply client-side sorting (same as main table)
+    const sortedSites = [...mappedSites].sort((a, b) => {
+      let aVal: string | number;
+      let bVal: string | number;
+      
+      if (sortField === 'pic') {
+        aVal = a.pic;
+        bVal = b.pic;
+      } else if (sortField === 'slaStatus') {
+        const statusPriority: Record<SLAStatus, number> = {
+          'Meet SLA': 4,
+          'Fair': 3,
+          'Bad': 2,
+          'Very Bad': 1,
+        };
+        aVal = statusPriority[a.slaStatus] || 0;
+        bVal = statusPriority[b.slaStatus] || 0;
+      } else {
+        aVal = a[sortField];
+        bVal = b[sortField];
+      }
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      
+      return 0;
+    });
+    
+    // Build table HTML
+    const tableHTML = `
+      <div class="table-wrapper" style="overflow-x: auto; border-radius: 6px; border: 1px solid #e5e7eb; background-color: white; padding: 16px;">
+        <table style="width: 100%; border-collapse: collapse; background-color: white;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e7eb; background-color: rgba(243, 244, 246, 0.5);">
+              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Site Name</th>
+              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Province</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">Battery Version</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">SLA AVG</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">Status SP</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">PIC</th>
+              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Problem</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sortedSites.map(site => `
+              <tr style="border-bottom: 1px solid rgba(229, 231, 235, 0.5);">
+                <td style="padding: 12px 16px; font-size: 14px; font-weight: 500; text-align: left;">${site.siteName}</td>
+                <td style="padding: 12px 16px; font-size: 14px; color: #6b7280; text-align: left;">${site.province}</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; min-height: 24px; ${
+                    site.batteryVersion === 'Talis5 Full' ? 'background-color: #dbeafe; color: #1e40af;' :
+                    site.batteryVersion === 'Talis5 Mix' ? 'background-color: #fef3c7; color: #92400e;' :
+                    'background-color: #dcfce7; color: #166534;'
+                  }">${site.batteryVersion}</span>
+                </td>
+                <td style="padding: 12px 16px; font-size: 14px; font-weight: 600; text-align: center; color: ${
+                  site.slaAvg >= 95.5 ? '#16a34a' : site.slaAvg >= 70 ? '#eab308' : '#dc2626'
+                };">${site.slaAvg.toFixed(2)}%</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; min-height: 24px; ${
+                    site.status === 'Potensi SP' ? 'background-color: rgba(234, 179, 8, 0.1); color: #eab308;' : 'background-color: rgba(22, 163, 74, 0.1); color: #16a34a;'
+                  }">${site.status}</span>
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">
+                  ${getUniquePics(site.problems).length > 0 ? 
+                    getUniquePics(site.problems).map(p => `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; min-height: 24px; margin: 2px; ${
+                      p === 'VSAT' ? 'background-color: rgba(234, 179, 8, 0.1); color: #eab308;' :
+                      p === 'SNMP' || p === 'POWER' ? 'background-color: rgba(59, 130, 246, 0.1); color: #2563eb;' :
+                      'background-color: rgba(107, 114, 128, 0.1); color: #4b5563;'
+                    }">${p}</span>`).join('') :
+                    '<span style="color: #6b7280;">-</span>'
+                  }
+                </td>
+                <td style="padding: 12px 16px; font-size: 14px; text-align: left; color: ${site.problems && site.problems.length > 0 ? '#000' : '#6b7280'};">${formatProblemDescription(site.problems)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    container.innerHTML = tableHTML;
+    return container;
   };
 
   const columns: { key: SortField; label: string }[] = [
@@ -439,12 +677,22 @@ const SLADataTable = () => {
                 variant="default"
                 size="sm"
                 onClick={captureTable}
-                className="flex items-center gap-2 bg-primary text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all"
+                disabled={isCapturing}
+                className="flex items-center gap-2 bg-primary text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Capture table as PNG"
                 aria-label="Capture table as PNG"
               >
-                <Camera className="h-4 w-4" />
-                Capture Table
+                {isCapturing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {captureProgress || 'Capturing...'}
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-4 w-4" />
+                    Capture Table
+                  </>
+                )}
               </Button>
             </div>
           </div>
