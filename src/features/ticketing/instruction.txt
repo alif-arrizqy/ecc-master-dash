@@ -1,0 +1,426 @@
+================================================================================
+HALAMAN TICKETS - DOKUMENTASI LENGKAP
+================================================================================
+
+OVERVIEW
+--------
+Halaman untuk mengelola trouble tickets dengan integrasi ke service:
+- trouble-ticket-services (API utama ticketing)
+- sla-services (untuk SLA data)
+- sites-services (untuk site dan contact person data)
+
+Desain dan styling mengikuti design system yang digunakan di halaman Shipping dan Sparepart.
+
+
+ENDPOINTS YANG DIGUNAKAN
+------------------------
+GET    /api/v1/trouble-ticket              - List semua tickets (dengan filter status & ticketType)
+POST   /api/v1/trouble-ticket              - Buat ticket baru
+GET    /api/v1/trouble-ticket/:ticketNumber - Detail ticket
+PUT    /api/v1/trouble-ticket/:ticketNumber - Close ticket
+PUT    /api/v1/trouble-ticket/progress/:ticketNumber - Tambah progress
+GET    /api/v1/trouble-ticket/progress/:ticketNumber - Lihat history progress
+
+
+LAYOUT HALAMAN - MAIN TABLE
+--------------------------
+Table columns:
+| No. | Site ID | Nama Site | Baterai | Provinsi | SLA Avg | Durasi | Problem | PIC | Status | Action |
+
+Status display:
+- progress: Badge blue/info
+- pending: Badge yellow/warning  
+- closed: Badge gray/secondary
+
+Sort features:
+- Sortable: Date Down, Duration, SLA Avg
+- Filterable: Status, Ticket Type, Site
+
+Table row height: Match spacing dari halaman Shipping/Sparepart
+
+
+SLA AVG HIGHLIGHT (Conditional Styling)
+---------------------------------------
+- SLA Avg >= 95.5  → Green background / text (#28a745)  [Good]
+- SLA Avg >= 70 && < 95.5 → Yellow background / text (#ffc107) [Warning]
+- SLA Avg < 70     → Red background / text (#dc3545)    [Danger]
+
+
+ACTION COLUMN - BUTTONS
+------------------------
+1. View Details (icon: eye) 
+   - Opens modal dengan full ticket details
+   - Button color: info/blue
+
+2. Edit (icon: edit/pencil)
+   - Opens modal edit dengan 3 field saja:
+     * Problem (multiple checkbox)
+     * Plan CM (text input)
+     * Action (textarea)
+   - Validasi: Hanya bisa edit jika status ≠ "closed"
+   - Button color: primary/blue
+
+3. Add Progress (icon: plus)
+   - Opens modal untuk menambah progress history
+   - Validasi: Hanya jika status ≠ "closed"
+   - Tampilkan error jika ticket sudah closed
+   - Button color: success/green
+
+4. Close Ticket (icon: times/x)
+   - Konfirmasi modal sebelum close
+   - Validasi: Hanya jika status ≠ "closed"
+   - Tampilkan error jika sudah closed
+   - Fields required: Date, Action (untuk history)
+   - Button color: danger/red
+
+5. Delete (icon: trash)
+   - Konfirmasi modal dengan warning message
+   - Hanya jika status = "pending" (belum in progress atau closed)
+   - Jika sudah progress/closed, disable button atau hide button
+   - Button color: danger/red
+
+
+MODAL: DETAIL TICKET
+---------------------
+Title: "Detail Ticket #{ticket_number}"
+Size: Large (lg)
+Sections:
+
+I. INFORMASI TICKET
+   - Ticket Number (read-only, highlighted)
+   - Ticket Type (read-only)
+   - Status (read-only, badge)
+   - Date Down (read-only)
+   - Duration Down (read-only, calculated)
+   - Created At (read-only)
+   - Updated At (read-only)
+
+II. INFORMASI SITE
+   - Site ID (read-only)
+   - Nama Site (read-only)
+   - Province (read-only)
+   - Battery Version (read-only)
+   - PR Code (read-only)
+
+III. SLA INFORMATION
+   - SLA Avg (read-only, dengan color highlight sesuai rules di atas)
+   - SLA Unit (read-only, default: %)
+
+IV. CONTACT INFORMATION
+   - PIC Name (read-only)
+   - Contact Person nama (from contact_person array)
+   - Contact Person phone (from contact_person array)
+   - Jika multiple contact persons, tampilkan dalam list atau sections
+
+V. RENCANA DAN ACTION
+   - Plan CM (read-only)
+   - Problems (read-only, list/badge)
+   - Action (read-only, textarea)
+
+VI. HISTORY PROGRESS (Tab atau Section terpisah)
+   - Table/List berisi:
+     * Date (YYYY-MM-DD format)
+     * Action description
+   - Jika kosong, tampilkan "No progress recorded yet"
+   - Sorted by date (newest first)
+
+Buttons:
+- Edit button (buka Edit Modal)
+- Add Progress button (jika status ≠ closed)
+- Close ticket button (jika status ≠ closed)
+- Close/Back button
+
+
+MODAL: EDIT TICKET
+------------------
+Title: "Edit Ticket #{ticket_number}"
+Size: Medium (md)
+
+Editable fields (3 fields saja):
+1. Problem (Multiple Checkbox)
+   - Source: GET /api/v1/problems endpoint
+   - Pre-populate dari current ticket data
+   - Required field
+   - Min 1 selection
+
+2. Plan CM (Text Input)
+   - Max length: 255 character
+   - Required field
+
+3. Action (Textarea)
+   - Max length: 1000 character
+   - Required field
+
+Validation:
+- Semua field required
+- Min 1 problem harus dipilih
+- Tampilkan error messages jelas
+
+Buttons:
+- Submit (POST/PUT ke endpoint update)
+- Cancel (close modal tanpa save)
+
+
+MODAL: ADD PROGRESS
+-------------------
+Title: "Add Progress to Ticket #{ticket_number}"
+Size: Small-Medium (sm)
+
+Fields:
+1. Date (Date Picker)
+   - Default: Today
+   - Format: YYYY-MM-DD
+   - Required field
+
+2. Action (Textarea)
+   - Placeholder: "Deskripsi action/pekerjaan yang dilakukan..."
+   - Max length: 500 character
+   - Required field
+
+Validasi:
+- Jika ticket status "closed" → Error: "Cannot add progress to closed ticket"
+- Tampilkan validasi realtime ketika modal dibuka
+
+Buttons:
+- Submit (POST ke /api/v1/trouble-ticket/progress/:ticketNumber)
+- Cancel
+
+
+MODAL: CLOSE TICKET
+-------------------
+Title: "Close Ticket #{ticket_number}"
+Size: Small-Medium (sm)
+
+Message: "Apakah anda yakin ingin menutup ticket ini? Ticket yang sudah ditutup tidak dapat diubah atau ditambahkan progress baru."
+
+Fields:
+1. Date (Date Picker)
+   - Default: Today
+   - Format: YYYY-MM-DD
+   - Required field
+   - Label: "Date Closed"
+
+2. Action (Textarea)
+   - Placeholder: "Final action / hasil perbaikan..."
+   - Max length: 500 character
+   - Required field
+   - Label: "Closing Action"
+
+Validasi:
+- Jika ticket status "closed" → Error: "Ticket is already closed" (prevent double close)
+- Tampilkan status badge current di atas form
+
+Buttons:
+- Confirm Close (PUT ke /api/v1/trouble-ticket/:ticketNumber)
+- Cancel
+
+
+MODAL: TAMBAH TICKET BARU (Create)
+-----------------------------------
+Title: "Add New Trouble Ticket"
+Size: Large (lg)
+
+Form fields (in order):
+
+1. Ticket Type (Dropdown)
+   - Source: GET /api/v1/ticket-types endpoint
+   - Format response: { id, name }
+   - Required field
+   - Label: "Ticket Type"
+   
+2. Date Down (Date Picker)
+   - Format: YYYY-MM-DD
+   - Required field
+   - Max date: Today
+   - Label: "Date Down"
+
+3. Name Site (Dropdown + Search)
+   - Source: GET /api/v1/sites endpoint
+   - Search/filter by: Site ID, Site Name, Province
+   - Display: "Site ID - Site Name"
+   - Required field
+   - Label: "Select Site"
+   - On change: Trigger fetch SLA Avg
+
+4. SLA Avg (Read-only with auto-populate)
+   - Automatically filled setelah user select site
+   - Source: GET /api/v1/sla-bakti/master?siteId={id}&startDate=...&endDate=...
+   - Format: Show number + "%" + color highlight
+   - Read-only field
+   - Tampilkan loading state saat fetching
+   - If error: Tampilkan "N/A" dan warning message tapi tetap bisa submit
+
+5. Problem (Multiple Checkbox)
+   - Source: GET /api/v1/problems endpoint
+   - Format response: { id, name }
+   - Display: Checkbox list (max 5 items visible, scrollable)
+   - Required field, min 1 selection
+   - Label: "Select Problems"
+
+6. Plan CM (Text Input)
+   - Max length: 255 character
+   - Required field
+   - Placeholder: "e.g., Replace battery tomorrow"
+   - Label: "Plan CM"
+
+7. PIC (Dropdown)
+   - Source: GET /api/v1/pics endpoint atau list default
+   - Format response: { id, name }
+   - Required field
+   - Label: "PIC (Person In Charge)"
+
+8. Action (Textarea)
+   - Max length: 1000 character
+   - Required field
+   - Placeholder: "Describe the issue and initial action taken..."
+   - Label: "Action"
+
+Field Grouping (untuk visual clarity):
+- Ticket & Date info: Ticket Type, Date Down
+- Site & SLA info: Name Site, SLA Avg
+- Problem & Plan: Problem, Plan CM
+- Contact & Action: PIC, Action
+
+Validation Rules:
+- Semua field required (except SLA which auto-filled)
+- Date Down tidak boleh > hari ini
+- Min 1 problem harus dipilih
+- Plan CM & Action tidak boleh kosong lebih dari whitespace
+- Tampilkan inline error messages
+
+Buttons:
+- Submit (POST ke /api/v1/trouble-ticket)
+- Cancel (close modal tanpa save)
+
+Success handling:
+- Show toast "Ticket created successfully"
+- Refresh table data
+- Close modal
+- Highlight newly created row
+
+
+FILTER & SEARCH SECTION
+-----------------------
+Location: Di atas table
+
+Filters:
+1. Status Filter (Dropdown/Buttons)
+   - Options: All, Progress, Pending, Closed
+   - Default: All
+   - Query param: ?status=...
+
+2. Ticket Type Filter (Dropdown)
+   - Source: GET /api/v1/ticket-types
+   - Default: All (kosong)
+   - Query param: ?ticketType=...
+
+3. Date Range (Optional)
+   - From Date, To Date
+   - Filter by: Date Down
+   - Query param: ?fromDate=...&toDate=...
+
+4. Site Search (Optional)
+   - Search by: Site ID, Site Name
+   - Real-time or with search button
+   - Query param: ?search=...
+
+Apply button untuk submit semua filter
+Clear/Reset button untuk reset semua filter
+
+
+BUTTON TAMBAH TICKET
+---------------------
+Location: Top-right corner table, atau separate section
+Label: "+ Add Ticket" atau "+ New Ticket"
+Icon: Plus icon
+Color: Primary/Green
+Action: Opens Create Ticket Modal (lihat MODAL section di atas)
+Size: Match button size di halaman lain (Shipping/Sparepart)
+
+
+PAGINATION & DATA HANDLING
+--------------------------
+Pagination:
+- Show rows per page: 10, 20, 50 (kombinasi dengan dari halaman lain)
+- Total count ditampilkan: "Showing 1 to 10 of 150 entries"
+- Paginate dengan query params: ?page=1&perPage=10
+
+Loading state:
+- Show skeleton loading untuk table rows
+- Show spinner untuk modal operations
+- Disable buttons during submission
+
+Error handling:
+- Show toast notifications untuk errors
+- Jika list load gagal, tampilkan retry button
+- Jika modal operation gagal, tampilkan error message di dalam modal
+
+Empty state:
+- Jika tidak ada data, tampilkan ilustrasi + message: "No tickets found"
+- Tampilkan CTA button "Create First Ticket"
+
+
+RESPONSIVE DESIGN
+------------------
+Desktop (1920px+): Full table dengan semua columns
+Tablet (768px-1024px): Hide non-essential columns (PIC, Problem), add expand row
+Mobile (<768px): Switch ke card view atau vertical table
+
+
+COLOR SCHEME & STYLING
+-----------------------
+Match dengan design system Shipping/Sparepart:
+- Primary color: [sesuaikan dengan brand]
+- Success: #28a745
+- Warning/Yellow: #ffc107
+- Danger/Red: #dc3544
+- Info/Blue: #17a2b8
+- Gray/Disabled: #6c757d
+
+Font: Match dengan existing ui (Shipping/Sparepart)
+Spacing: Match dengan existing ui
+Shadows & Borders: Match dengan existing ui
+
+
+FIELD MAPPINGS (API to UI)
+---------------------------
+API Response Field → UI Display Field
+ticket_number → Ticket Number
+ticket_type_id → Ticket Type (display name)
+date_down → Date Down
+site_id → Site ID
+sla_avg → SLA Avg
+pic_id → PIC (display pic name)
+plan_cm → Plan CM
+action → Action
+status → Status (badge)
+created_at → Created At
+updated_at → Updated At
+
+From sites-services:
+site_name → Nama Site
+battery_version → Baterai
+province → Provinsi
+contact_person[].name → Contact Person Nama
+contact_person[].phone → Contact Person Phone
+pr_code → PR Code
+
+Calculated fields:
+duration = Today - date_down → Durasi Down (dalam hari)
+
+
+NOTES & CONSIDERATIONS
+-----------------------
+1. SLA Avg value of 0 or null tidak boleh trigger error, treatment seperti "N/A"
+2. Contact person bisa lebih dari 1, tampilkan dalam list atau multiple fields
+3. Problem data bisa dari tabel problems di trouble-ticket-services
+4. Ticket Type data bisa dari tabel ticket_types di trouble-ticket-services
+5. Pagination & filtering harus efficient, gunakan backend filtering jika possible
+6. Toast notifications gunakan consistent library (e.g., React Toastify, Ant Design notification)
+7. Dates always formatted YYYY-MM-DD untuk consistency
+8. Status values yang valid: "progress", "pending", "closed"
+9. Jika user try close/edit closed ticket, show validation error langsung
+10. History progress section sorted by date (newest first)
+11. Implement loading spinner untuk saat fetch SLA Avg saat select site
+12. Cache site data jika possible untuk performance
+
