@@ -11,6 +11,7 @@ const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL;
 const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
 const SHIPPING_SERVICES_URL = import.meta.env.VITE_SHIPPING_SERVICES_URL;
 const SPAREPART_SERVICES_URL = import.meta.env.VITE_SPAREPART_SERVICES_URL;
+const TROUBLE_TICKET_SERVICES_URL = import.meta.env.VITE_TROUBLE_TICKET_SERVICES_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
   console.warn('VITE_SLA_SERVICES_URL is not set.');
@@ -26,6 +27,10 @@ if (!import.meta.env.VITE_SHIPPING_SERVICES_URL) {
 
 if (!import.meta.env.VITE_SPAREPART_SERVICES_URL) {
   console.warn('VITE_SPAREPART_SERVICES_URL is not set.');
+}
+
+if (!import.meta.env.VITE_TROUBLE_TICKET_SERVICES_URL) {
+  console.warn('VITE_TROUBLE_TICKET_SERVICES_URL is not set.');
 }
 
 export type BatteryVersion = 'talis5' | 'mix' | 'jspro';
@@ -90,6 +95,17 @@ export const shippingApiClient: AxiosInstance = axios.create({
  */
 export const sparepartApiClient: AxiosInstance = axios.create({
   baseURL: SPAREPART_SERVICES_URL,
+  timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Create axios instance for Trouble Ticket Services
+ */
+export const troubleTicketApiClient: AxiosInstance = axios.create({
+  baseURL: TROUBLE_TICKET_SERVICES_URL,
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -407,6 +423,71 @@ sparepartApiClient.interceptors.response.use(
       console.error('Sparepart API Error:', error.message);
     }
     
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Request interceptor for Trouble Ticket Services
+ */
+troubleTicketApiClient.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * Response interceptor for Trouble Ticket Services
+ */
+troubleTicketApiClient.interceptors.response.use(
+  (response) => {
+    // Check if response has success field and it's false
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      if (!response.data.success) {
+        throw new Error('API returned unsuccessful response');
+      }
+    }
+    return response;
+  },
+  (error: AxiosError) => {
+    // Handle different error types
+    if (error.response) {
+      // Server responded with error status
+      const status = error.response.status;
+      const message = error.response.data
+        ? (error.response.data as { message?: string })?.message || error.message
+        : error.message;
+
+      console.error(`Trouble Ticket API Error [${status}]:`, message);
+
+      // You can add specific error handling based on status codes
+      switch (status) {
+        case 401:
+          // Handle unauthorized - maybe redirect to login
+          break;
+        case 403:
+          // Handle forbidden
+          break;
+        case 404:
+          // Handle not found
+          break;
+        case 500:
+          // Handle server error
+          break;
+        default:
+          break;
+      }
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error('Trouble Ticket API Error: No response received', error.request);
+    } else {
+      // Something else happened
+      console.error('Trouble Ticket API Error:', error.message);
+    }
+
     return Promise.reject(error);
   }
 );
