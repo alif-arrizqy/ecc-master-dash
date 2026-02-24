@@ -8,6 +8,7 @@ import { Loading } from "@/components/ui/loading";
 import NotFound from "../pages/NotFound";
 import UnderDevelopment from "../pages/UnderDevelopment";
 import Layout from "@/shared/components/layout/Layout";
+import TicketingPage from "@/features/ticketing/pages/TicketingPage";
 
 // Dashboard Page
 const Dashboard = lazy(() => import("../features/dashboard/pages/Dashboard").then(m => ({ default: m.default })));
@@ -127,7 +128,7 @@ const App = () => (
             <Route path="/sla-internal/3" element={<UnderDevelopment title="SLA 3" description="Halaman SLA Internal 3" />} />
 
             {/* Tools Routes */}
-            <Route path="/tools/tickets" element={<NotFound />} />
+            <Route path="/tools/tickets" element={<TicketingPage />} />
             <Route 
               path="/tools/shipping" 
               element={
