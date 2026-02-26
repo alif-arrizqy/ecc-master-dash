@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Edit, Plus, X, Pencil, Trash2, Check, AlertTriangle } from "lucide-react";
+import { Edit, Plus, X, Pencil, Trash2, Check, AlertTriangle, Lock } from "lucide-react";
 import { StatusBadge } from "../StatusBadge";
 import { SLABadge } from "../SLABadge";
 import { troubleTicketApi } from "../../services/ticketing.api";
@@ -539,7 +539,7 @@ export const DetailTicketModal = ({
                             onClick={onClose}
                             className="bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
                         >
-                            <X className="h-4 w-4 mr-1.5" />
+                            <Lock className="h-4 w-4 mr-1.5" />
                             Close Ticket
                         </Button>
                     )}
