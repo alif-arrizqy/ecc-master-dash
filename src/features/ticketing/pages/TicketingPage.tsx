@@ -272,34 +272,38 @@ const TicketingPage = () => {
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        {/* Export Excel */}
                         <Button
-                            variant="outline"
                             size="sm"
                             onClick={handleExportExcel}
                             disabled={isExporting}
-                            className="gap-2 border-green-600 text-green-700 dark:text-green-400 hover:bg-green-600 hover:text-white hover:border-green-600 dark:hover:bg-green-600 dark:hover:text-white transition-all duration-200"
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-60"
                         >
                             <FileDown
                                 className={`h-4 w-4 ${isExporting ? "animate-pulse" : ""}`}
                             />
                             {isExporting ? "Exporting..." : "Export Excel"}
                         </Button>
+
+                        {/* Refresh */}
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => refetch()}
                             disabled={isRefetching}
-                            className="gap-2 border-primary/50 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-200"
+                            className="gap-2 border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white hover:border-blue-600 dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600 transition-all duration-200 disabled:opacity-60"
                         >
                             <RefreshCw
                                 className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`}
                             />
                             Refresh
                         </Button>
+
+                        {/* Add Ticket */}
                         <Button
                             onClick={() => setCreateModalOpen(true)}
                             size="sm"
-                            className="gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                         >
                             <Plus className="h-4 w-4" />
                             Add Ticket
