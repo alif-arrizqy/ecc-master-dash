@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import type { Ticket, AddProgressFormData, TicketStatus } from '../../types/ticketing.types';
+import type { Ticket, AddProgressFormData } from '../../types/ticketing.types';
 
 interface AddProgressModalProps {
   open: boolean;
