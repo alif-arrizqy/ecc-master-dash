@@ -71,11 +71,10 @@ export interface SLAData {
 }
 
 export interface ProgressHistory {
-  id?: number;
+  id: number;
   date: string; // YYYY-MM-DD
   action: string;
   created_at?: string;
-  updated_at?: string;
 }
 
 // Form Data Types
@@ -139,10 +138,8 @@ export interface TicketFilterParams {
   perPage?: number;
   status?: TicketStatus | '';
   ticketType?: number | '';
-  siteId?: string;
   siteName?: string;
-  fromDate?: string;
-  toDate?: string;
+  province?: string;
 }
 
 // Type guards and utilities

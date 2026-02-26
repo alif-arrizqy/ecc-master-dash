@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Hash, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import type { TicketType } from '../types/ticketing.types';
 import type { TicketFilterParams } from '../types/ticketing.types';
 
@@ -23,14 +23,13 @@ interface TicketFiltersProps {
   onApply: () => void;
 }
 
-export const TicketFilters = ({ ticketTypes, onFilterChange, onApply }: TicketFiltersProps) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const TicketFilters = ({ ticketTypes, onFilterChange, onApply: _onApply }: TicketFiltersProps) => {
   const [filters, setFilters] = useState({
-    siteId: '',
     siteName: '',
     status: '',
     ticketType: '',
-    fromDate: '',
-    toDate: '',
+    province: '',
   });
 
   const handleFilterChange = (key: string, value: string) => {
@@ -41,20 +40,16 @@ export const TicketFilters = ({ ticketTypes, onFilterChange, onApply }: TicketFi
 
   const handleClear = () => {
     setFilters({
-      siteId: '',
       siteName: '',
       status: '',
       ticketType: '',
-      fromDate: '',
-      toDate: '',
+      province: '',
     });
     onFilterChange({
-      siteId: undefined,
       siteName: undefined,
       status: undefined,
       ticketType: undefined,
-      fromDate: undefined,
-      toDate: undefined,
+      province: undefined,
     });
   };
 
@@ -64,18 +59,7 @@ export const TicketFilters = ({ ticketTypes, onFilterChange, onApply }: TicketFi
     <div className="bg-card rounded-lg p-6 card-shadow animate-slide-up mb-6">
       <div className="flex flex-col gap-4">
         {/* Filter bar */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* Site ID Search */}
-          <div className="relative">
-            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cari Site ID..."
-              value={filters.siteId}
-              onChange={(e) => handleFilterChange('siteId', e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Site Name Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -86,6 +70,21 @@ export const TicketFilters = ({ ticketTypes, onFilterChange, onApply }: TicketFi
               className="pl-9"
             />
           </div>
+
+          {/* Province Filter */}
+          <Select value={filters.province || 'all'} onValueChange={(val) => handleFilterChange('province', val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Semua Provinsi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Provinsi</SelectItem>
+              <SelectItem value="MALUKU">MALUKU</SelectItem>
+              <SelectItem value="MALUKU UTARA">MALUKU UTARA</SelectItem>
+              <SelectItem value="PAPUA BARAT">PAPUA BARAT</SelectItem>
+              <SelectItem value="PAPUA BARAT DAYA">PAPUA BARAT DAYA</SelectItem>
+              <SelectItem value="PAPUA SELATAN">PAPUA SELATAN</SelectItem>
+            </SelectContent>
+          </Select>
 
           {/* Status Filter */}
           <Select value={filters.status || 'all'} onValueChange={(val) => handleFilterChange('status', val)}>
@@ -117,22 +116,6 @@ export const TicketFilters = ({ ticketTypes, onFilterChange, onApply }: TicketFi
               ))}
             </SelectContent>
           </Select>
-
-          {/* From Date */}
-          <Input
-            type="date"
-            value={filters.fromDate}
-            onChange={(e) => handleFilterChange('fromDate', e.target.value)}
-            placeholder="From Date"
-          />
-
-          {/* To Date */}
-          <Input
-            type="date"
-            value={filters.toDate}
-            onChange={(e) => handleFilterChange('toDate', e.target.value)}
-            placeholder="To Date"
-          />
         </div>
 
         {/* Clear button */}

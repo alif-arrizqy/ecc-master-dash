@@ -143,17 +143,14 @@ export const TicketTable = ({
                             <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
                                 No.
                             </th>
-                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
-                                Site ID
-                            </th>
-                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
-                                Nama Site
-                            </th>
-                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
-                                Baterai
-                            </th>
-                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
-                                Provinsi
+                            <th
+                                className="py-3 px-4 text-sm font-medium text-muted-foreground text-center whitespace-nowrap cursor-pointer hover:text-foreground transition-colors"
+                                onClick={() => handleSort("duration")}
+                            >
+                                <div className="flex items-center justify-center gap-1">
+                                    Durasi Down
+                                    <SortIcon field="duration" />
+                                </div>
                             </th>
                             <th
                                 className="py-3 px-4 text-sm font-medium text-muted-foreground text-center whitespace-nowrap cursor-pointer hover:text-foreground transition-colors"
@@ -164,14 +161,14 @@ export const TicketTable = ({
                                     <SortIcon field="sla_avg" />
                                 </div>
                             </th>
-                            <th
-                                className="py-3 px-4 text-sm font-medium text-muted-foreground text-center whitespace-nowrap cursor-pointer hover:text-foreground transition-colors"
-                                onClick={() => handleSort("duration")}
-                            >
-                                <div className="flex items-center justify-center gap-1">
-                                    Durasi
-                                    <SortIcon field="duration" />
-                                </div>
+                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
+                                Nama Site
+                            </th>
+                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
+                                Provinsi
+                            </th>
+                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
+                                Baterai
                             </th>
                             <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
                                 Problem
@@ -179,11 +176,17 @@ export const TicketTable = ({
                             <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap">
                                 PIC
                             </th>
+                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap max-w-[180px]">
+                                Action
+                            </th>
+                            <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-left whitespace-nowrap max-w-[150px]">
+                                Plan CM
+                            </th>
                             <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-center whitespace-nowrap">
                                 Status
                             </th>
                             <th className="py-3 px-4 text-sm font-medium text-muted-foreground text-center whitespace-nowrap">
-                                Action
+                                Aksi
                             </th>
                         </tr>
                     </thead>
@@ -200,25 +203,22 @@ export const TicketTable = ({
                                     <td className="py-3 px-4 text-sm text-muted-foreground align-middle">
                                         {index + 1}
                                     </td>
-                                    <td className="py-3 px-4 text-sm font-medium text-foreground align-middle font-mono">
-                                        {ticket.site_id}
+                                    <td className="py-3 px-4 text-sm text-center align-middle text-muted-foreground">
+                                        {duration} hari
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-center align-middle">
+                                        <SLABadge value={ticket.sla_avg} />
                                     </td>
                                     <td className="py-3 px-4 text-sm text-foreground align-middle">
                                         {ticket.site?.site_name?.toUpperCase() ||
                                             "-"}
                                     </td>
                                     <td className="py-3 px-4 text-sm text-muted-foreground align-middle">
-                                        {ticket.site?.battery_version?.toUpperCase() ||
-                                            "-"}
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-muted-foreground align-middle">
                                         {ticket.site?.province || "-"}
                                     </td>
-                                    <td className="py-3 px-4 text-sm text-center align-middle">
-                                        <SLABadge value={ticket.sla_avg} />
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-center align-middle text-muted-foreground">
-                                        {duration} hari
+                                    <td className="py-3 px-4 text-sm text-muted-foreground align-middle">
+                                        {ticket.site?.battery_version?.toUpperCase() ||
+                                            "-"}
                                     </td>
                                     <td className="py-3 px-4 text-sm align-middle">
                                         {ticket.problems &&
@@ -250,6 +250,16 @@ export const TicketTable = ({
                                     </td>
                                     <td className="py-3 px-4 text-sm text-muted-foreground align-middle">
                                         {ticket.pic?.name || "-"}
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-muted-foreground align-middle max-w-[180px]">
+                                        <p className="line-clamp-2 text-xs">
+                                            {ticket.action || "-"}
+                                        </p>
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-muted-foreground align-middle max-w-[150px]">
+                                        <p className="line-clamp-2 text-xs">
+                                            {ticket.plan_cm || "-"}
+                                        </p>
                                     </td>
                                     <td className="py-3 px-4 text-sm text-center align-middle">
                                         <StatusBadge status={ticket.status} />

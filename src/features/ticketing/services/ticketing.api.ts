@@ -104,8 +104,7 @@ export const troubleTicketApi = {
         ticketType?: number;
         siteId?: string;
         siteName?: string;
-        fromDate?: string;
-        toDate?: string;
+        province?: string;
     }): Promise<PaginatedResponse<Ticket[]>> => {
         const response = await troubleTicketApiClient.get<ApiResponse<unknown>>(
             "/api/v1/trouble-ticket",
@@ -231,7 +230,62 @@ export const troubleTicketApi = {
         );
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ticketData = response.data.data as any;
-        return ticketData?.progress ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (ticketData?.progress ?? []).map((p: any) => ({
+            id: p.id ?? 0,
+            date: p.date ?? "",
+            action: p.action ?? "",
+        }));
+    },
+
+    /**
+     * Update a progress entry
+     * PUT /api/v1/trouble-ticket/progress/:ticketNumber/:progressId
+     */
+    updateProgress: async (
+        ticketNumber: string,
+        progressId: number,
+        data: { date: string; action: string },
+    ): Promise<void> => {
+        await troubleTicketApiClient.put(
+            `/api/v1/trouble-ticket/progress/${ticketNumber}/${progressId}`,
+            data,
+        );
+    },
+
+    /**
+     * Delete a progress entry
+     * DELETE /api/v1/trouble-ticket/progress/:ticketNumber/:progressId
+     */
+    deleteProgress: async (
+        ticketNumber: string,
+        progressId: number,
+    ): Promise<void> => {
+        await troubleTicketApiClient.delete(
+            `/api/v1/trouble-ticket/progress/${ticketNumber}/${progressId}`,
+        );
+    },
+
+    /**
+     * Export tickets to Excel
+     * GET /api/v1/trouble-ticket/export
+     * Returns blob for download
+     */
+    exportExcel: async (params?: {
+        status?: string;
+        ticketType?: number;
+        siteId?: string;
+        siteName?: string;
+        province?: string;
+    }): Promise<Blob> => {
+        const response = await troubleTicketApiClient.get(
+            "/api/v1/trouble-ticket/export",
+            {
+                params,
+                responseType: "blob",
+            },
+        );
+        return response.data as Blob;
     },
 };
 

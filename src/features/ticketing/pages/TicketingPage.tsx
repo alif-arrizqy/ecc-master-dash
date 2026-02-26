@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, Ticket as TicketIcon } from "lucide-react";
+import { Plus, RefreshCw, Ticket as TicketIcon, FileDown } from "lucide-react";
 import { useTickets } from "../hooks/useTickets";
 import { useTicketTypes } from "../hooks/useTicketTypes";
 import { useProblems } from "../hooks/useProblems";
@@ -36,6 +36,7 @@ const TicketingPage = () => {
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
     const [filters, setFilters] = useState<Partial<TicketFilterParams>>({});
+    const [isExporting, setIsExporting] = useState(false);
 
     // State for modals
     const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -226,6 +227,32 @@ const TicketingPage = () => {
         }
     };
 
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        try {
+            const blob = await troubleTicketApi.exportExcel({
+                status: filters.status ? String(filters.status) : undefined,
+                ticketType: filters.ticketType ? Number(filters.ticketType) : undefined,
+                siteId: filters.siteId || undefined,
+                siteName: filters.siteName || undefined,
+                province: filters.province || undefined,
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "trouble-ticket-report.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast.success("File Excel berhasil diunduh");
+        } catch {
+            toast.error("Gagal mengekspor ke Excel");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="container mx-auto px-4 py-8">
             {/* Page Header */}
@@ -245,6 +272,18 @@ const TicketingPage = () => {
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExportExcel}
+                            disabled={isExporting}
+                            className="gap-2 border-green-600 text-green-700 dark:text-green-400 hover:bg-green-600 hover:text-white hover:border-green-600 dark:hover:bg-green-600 dark:hover:text-white transition-all duration-200"
+                        >
+                            <FileDown
+                                className={`h-4 w-4 ${isExporting ? "animate-pulse" : ""}`}
+                            />
+                            {isExporting ? "Exporting..." : "Export Excel"}
+                        </Button>
                         <Button
                             variant="outline"
                             size="sm"

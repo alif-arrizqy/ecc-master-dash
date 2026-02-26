@@ -122,7 +122,6 @@ export const EditTicketModal = ({
     if (!formData.site_id) newErrors.site_id = 'Pilih site';
     if (formData.problem_ids.length === 0) newErrors.problem_ids = 'Pilih minimal 1 problem';
     if (!formData.pic_id) newErrors.pic_id = 'Pilih PIC';
-    if (!formData.plan_cm.trim()) newErrors.plan_cm = 'Plan CM tidak boleh kosong';
     if (formData.plan_cm.length > 255) newErrors.plan_cm = 'Plan CM maksimal 255 karakter';
     if (!formData.action.trim()) newErrors.action = 'Action tidak boleh kosong';
     if (formData.action.length > 1000) newErrors.action = 'Action maksimal 1000 karakter';
@@ -337,7 +336,7 @@ export const EditTicketModal = ({
               </div>
 
               <div>
-                <Label htmlFor="edit-plan_cm">Plan CM *</Label>
+                <Label htmlFor="edit-plan_cm">Plan CM <span className="text-muted-foreground font-normal text-xs">(opsional)</span></Label>
                 <Input
                   id="edit-plan_cm"
                   value={formData.plan_cm}

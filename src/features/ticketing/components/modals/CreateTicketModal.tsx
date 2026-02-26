@@ -177,9 +177,6 @@ export const CreateTicketModal = ({
         if (formData.problem_ids.length === 0) {
             newErrors.problem_ids = "Pilih minimal 1 problem";
         }
-        if (!formData.plan_cm.trim()) {
-            newErrors.plan_cm = "Plan CM tidak boleh kosong";
-        }
         if (formData.plan_cm.length > 255) {
             newErrors.plan_cm = "Plan CM maksimal 255 karakter";
         }
@@ -549,7 +546,7 @@ export const CreateTicketModal = ({
 
                             {/* Plan CM */}
                             <div>
-                                <Label htmlFor="plan_cm">Plan CM *</Label>
+                                <Label htmlFor="plan_cm">Plan CM <span className="text-muted-foreground font-normal text-xs">(opsional)</span></Label>
                                 <Input
                                     id="plan_cm"
                                     value={formData.plan_cm}

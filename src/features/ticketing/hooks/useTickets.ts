@@ -16,10 +16,8 @@ export const useTickets = (params?: TicketFilterParams) => {
         limit: params?.perPage || 10,
         status: params?.status ? String(params.status) : undefined,
         ticketType: params?.ticketType ? Number(params.ticketType) : undefined,
-        siteId: params?.siteId || undefined,
         siteName: params?.siteName || undefined,
-        fromDate: params?.fromDate,
-        toDate: params?.toDate,
+        province: params?.province || undefined,
       }),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
