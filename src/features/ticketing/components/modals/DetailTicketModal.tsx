@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Edit, Plus, X, Pencil, Trash2, Check } from "lucide-react";
+import { Edit, Plus, X, Pencil, Trash2, Check, AlertTriangle } from "lucide-react";
 import { StatusBadge } from "../StatusBadge";
 import { SLABadge } from "../SLABadge";
 import { troubleTicketApi } from "../../services/ticketing.api";
@@ -51,6 +51,8 @@ export const DetailTicketModal = ({
     const queryClient = useQueryClient();
     const [editingProgress, setEditingProgress] = useState<EditingProgress | null>(null);
     const [isSavingProgress, setIsSavingProgress] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+    const [isDeletingProgress, setIsDeletingProgress] = useState(false);
 
     // Fetch progress history
     const { data: progressHistory = [], refetch: refetchProgress } = useQuery({
@@ -83,6 +85,7 @@ export const DetailTicketModal = ({
     const progressDates = Object.keys(groupedProgress).sort();
 
     const handleStartEdit = (progress: ProgressHistory) => {
+        setConfirmDeleteId(null);
         setEditingProgress({
             id: progress.id,
             date: progress.date,
@@ -114,16 +117,19 @@ export const DetailTicketModal = ({
         }
     };
 
-    const handleDeleteProgress = async (progressId: number) => {
+    const handleConfirmDelete = async (progressId: number) => {
         if (!ticket) return;
-        if (!window.confirm("Hapus progress ini?")) return;
+        setIsDeletingProgress(true);
         try {
             await troubleTicketApi.deleteProgress(ticket.ticket_number, progressId);
             toast.success("Progress berhasil dihapus");
+            setConfirmDeleteId(null);
             refetchProgress();
             queryClient.invalidateQueries({ queryKey: ["tickets"] });
         } catch {
             toast.error("Gagal menghapus progress");
+        } finally {
+            setIsDeletingProgress(false);
         }
     };
 
@@ -374,9 +380,9 @@ export const DetailTicketModal = ({
                                                     <div key={progress.id}>
                                                         {editingProgress?.id === progress.id ? (
                                                             /* Inline Edit Form */
-                                                            <div className="border rounded p-3 bg-muted/30 space-y-2">
+                                                            <div className="border border-blue-200 rounded-lg p-3 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900 space-y-2">
                                                                 <div>
-                                                                    <Label className="text-xs">Tanggal</Label>
+                                                                    <Label className="text-xs font-medium text-blue-700 dark:text-blue-400">Tanggal</Label>
                                                                     <Input
                                                                         type="date"
                                                                         value={editingProgress.date}
@@ -389,7 +395,7 @@ export const DetailTicketModal = ({
                                                                     />
                                                                 </div>
                                                                 <div>
-                                                                    <Label className="text-xs">Progress</Label>
+                                                                    <Label className="text-xs font-medium text-blue-700 dark:text-blue-400">Progress</Label>
                                                                     <Textarea
                                                                         value={editingProgress.action}
                                                                         onChange={(e) =>
@@ -407,7 +413,7 @@ export const DetailTicketModal = ({
                                                                         variant="outline"
                                                                         onClick={handleCancelEdit}
                                                                         disabled={isSavingProgress}
-                                                                        className="h-7 text-xs"
+                                                                        className="h-7 text-xs border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
                                                                     >
                                                                         Batal
                                                                     </Button>
@@ -415,16 +421,47 @@ export const DetailTicketModal = ({
                                                                         size="sm"
                                                                         onClick={handleSaveEdit}
                                                                         disabled={isSavingProgress}
-                                                                        className="h-7 text-xs"
+                                                                        className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                                                                     >
                                                                         <Check className="h-3 w-3 mr-1" />
                                                                         {isSavingProgress ? "Menyimpan..." : "Simpan"}
                                                                     </Button>
                                                                 </div>
                                                             </div>
+                                                        ) : confirmDeleteId === progress.id ? (
+                                                            /* Inline Delete Confirmation */
+                                                            <div className="border border-red-200 rounded-lg p-3 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900 space-y-2">
+                                                                <div className="flex items-start gap-2">
+                                                                    <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                                                                    <div className="flex-1">
+                                                                        <p className="text-sm font-medium text-red-700 dark:text-red-400">Hapus progress ini?</p>
+                                                                        <p className="text-xs text-red-600/80 dark:text-red-500/80 mt-0.5 line-clamp-2">{progress.action}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => setConfirmDeleteId(null)}
+                                                                        disabled={isDeletingProgress}
+                                                                        className="h-7 text-xs border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
+                                                                    >
+                                                                        Batal
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        onClick={() => handleConfirmDelete(progress.id)}
+                                                                        disabled={isDeletingProgress}
+                                                                        className="h-7 text-xs bg-red-600 hover:bg-red-700 text-white"
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3 mr-1" />
+                                                                        {isDeletingProgress ? "Menghapus..." : "Hapus"}
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
                                                         ) : (
                                                             /* Progress Item */
-                                                            <div className="flex items-start gap-2 group">
+                                                            <div className="flex items-start gap-2 group py-1 px-2 rounded hover:bg-muted/50 transition-colors">
                                                                 <span className="text-muted-foreground text-sm mt-0.5 shrink-0">•</span>
                                                                 <p className="text-sm flex-1">{progress.action}</p>
                                                                 {!isTicketClosed && (
@@ -432,20 +469,20 @@ export const DetailTicketModal = ({
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="sm"
-                                                                            className="h-6 w-6 p-0 hover:bg-primary/10"
+                                                                            className="h-6 w-6 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                                                                             title="Edit progress"
                                                                             onClick={() => handleStartEdit(progress)}
                                                                         >
-                                                                            <Pencil className="h-3 w-3 text-primary" />
+                                                                            <Pencil className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                                                                         </Button>
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="sm"
-                                                                            className="h-6 w-6 p-0 hover:bg-destructive/10"
+                                                                            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
                                                                             title="Hapus progress"
-                                                                            onClick={() => handleDeleteProgress(progress.id)}
+                                                                            onClick={() => setConfirmDeleteId(progress.id)}
                                                                         >
-                                                                            <Trash2 className="h-3 w-3 text-destructive" />
+                                                                            <Trash2 className="h-3 w-3 text-red-600 dark:text-red-400" />
                                                                         </Button>
                                                                     </div>
                                                                 )}
@@ -463,36 +500,46 @@ export const DetailTicketModal = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-2 pt-4 border-t">
+                <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
+                    {/* Close modal */}
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
+                        className="border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 transition-all duration-200"
                     >
-                        Close
+                        <X className="h-4 w-4 mr-1.5" />
+                        Tutup
                     </Button>
+
+                    {/* Edit ticket */}
                     {!isTicketClosed && onEdit && (
-                        <Button onClick={onEdit} className="gap-2">
-                            <Edit className="h-4 w-4" />
-                            Edit
+                        <Button
+                            onClick={onEdit}
+                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
+                        >
+                            <Edit className="h-4 w-4 mr-1.5" />
+                            Edit Ticket
                         </Button>
                     )}
+
+                    {/* Add Progress */}
                     {!isTicketClosed && onAddProgress && (
                         <Button
                             onClick={onAddProgress}
-                            variant="outline"
-                            className="gap-2"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
                         >
-                            <Plus className="h-4 w-4" />
+                            <Plus className="h-4 w-4 mr-1.5" />
                             Add Progress
                         </Button>
                     )}
+
+                    {/* Close Ticket */}
                     {!isTicketClosed && onClose && (
                         <Button
                             onClick={onClose}
-                            variant="destructive"
-                            className="gap-2"
+                            className="bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
                         >
-                            <X className="h-4 w-4" />
+                            <X className="h-4 w-4 mr-1.5" />
                             Close Ticket
                         </Button>
                     )}
