@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown, X, Eye, Calendar, Loader2 } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, X, Eye, Calendar, Loader2, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import SiteDetailModal from './SiteDetailModal';
 
 const ITEMS_PER_PAGE = 20;
 
-type SortField = 'siteName' | 'province' | 'batteryVersion' | 'slaAvg' | 'slaStatus' | 'status' | 'problemCount';
+type SortField = 'siteName' | 'province' | 'batteryVersion' | 'slaAvg' | 'slaStatus' | 'status' | 'pic';
 
 type SLAStatus = 'Meet SLA' | 'Fair' | 'Bad' | 'Very Bad';
 
@@ -73,6 +73,10 @@ const SLADataTable = () => {
     };
   } | null>(null);
   const [searchDebounce, setSearchDebounce] = useState('');
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureProgress, setCaptureProgress] = useState<string>('');
+  const tableRef = useRef<HTMLTableElement | null>(null);
+  const tableWrapperRef = useRef<HTMLDivElement | null>(null);
 
   // Helper functions for SLA status
   const getSLAStatus = (sla: number): SLAStatus => {
@@ -84,8 +88,7 @@ const SLADataTable = () => {
 
   const getSLAColor = (sla: number) => {
     if (sla >= 95.5) return 'text-status-good';
-    if (sla >= 90) return 'text-status-warning';
-    if (sla >= 80) return 'text-orange-600 dark:text-orange-500';
+    if (sla >= 70) return 'text-status-warning';
     return 'text-status-danger';
   };
 
@@ -109,6 +112,40 @@ const SLADataTable = () => {
       default:
         return 'bg-muted text-muted-foreground';
     }
+  };
+
+  const getPicColor = (pic: string) => {
+    switch (pic) {
+      case 'VSAT':
+        return 'bg-status-warning/10 text-status-warning';
+      case 'SNMP':
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'POWER':
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'Other':
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400';
+      default:
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400';
+    }
+  };
+
+  // Format problem description with truncation
+  const formatProblemDescription = (problems: unknown[]): string => {
+    if (!problems || problems.length === 0) return '-';
+    const problemsArray = problems as Array<{ problem?: string }>;
+    const firstProblem = problemsArray[0]?.problem || '-';
+    const MAX_LENGTH = 50;
+    return firstProblem.length > MAX_LENGTH 
+      ? firstProblem.substring(0, MAX_LENGTH) + '...' 
+      : firstProblem;
+  };
+
+    const getUniquePics = (problems: unknown[]): string[] => {
+    if (!problems || problems.length === 0) return [];
+    const problemsArray = problems as Array<{ pic?: string }>;
+    return problemsArray
+      .map(p => p.pic || 'Unknown')
+      .filter((p, i, arr) => arr.indexOf(p) === i);
   };
 
   // Debounce search term
@@ -207,11 +244,10 @@ const SLADataTable = () => {
   const mappedSites = useMemo(() => {
     if (!apiData) return [];
 
-    return apiData.sites.map((site): Site & { problemCount: number; problems: unknown[]; slaStatus: SLAStatus } => {
+    return apiData.sites.map((site): Site & { pic: string; problems: unknown[]; slaStatus: SLAStatus } => {
       const siteName = site.siteName || site.name || site.site_name || 'Unknown';
       const province = site.province || 'Unknown';
-      
-      // Map API battery version format to display format
+
       const apiBatteryVersion = (site.batteryVersion || site.battery_version || '').toLowerCase();
       const batteryVersionMap: Record<string, 'Talis5 Full' | 'Talis5 Mix' | 'JS PRO'> = {
         'talis5': 'Talis5 Full',
@@ -220,13 +256,14 @@ const SLADataTable = () => {
         'js pro': 'JS PRO',
       };
       const batteryVersion = batteryVersionMap[apiBatteryVersion] || 'Talis5 Full';
-      
+
       const slaAvg = site.siteSla?.slaAverage || site.slaAvg || site.sla_avg || 0;
       const status = (site.siteSla?.statusSP || site.status || 'Clear SP') as 'Potensi SP' | 'Clear SP';
       const problems = site.problem || [];
       const slaStatus = getSLAStatus(slaAvg);
-      
-      // Map daily SLA
+      const picLabels = getUniquePics(problems);
+      const pic = picLabels.length > 0 ? picLabels.join(', ') : '-';
+
       const dailySla = site.siteSla?.dailySla?.map((day, index) => ({
         day: index + 1,
         sla: day.sla,
@@ -241,7 +278,7 @@ const SLADataTable = () => {
         slaAvg,
         status,
         dailySla,
-        problemCount: problems.length,
+        pic,
         problems,
         slaStatus,
       };
@@ -262,9 +299,9 @@ const SLADataTable = () => {
       let aVal: string | number;
       let bVal: string | number;
 
-      if (sortField === 'problemCount') {
-        aVal = a.problemCount;
-        bVal = b.problemCount;
+      if (sortField === 'pic') {
+        aVal = a.pic;
+        bVal = b.pic;
       } else if (sortField === 'slaStatus') {
         // Sort by SLA status priority: Meet SLA > Fair > Bad > Very Bad
         const statusPriority: Record<SLAStatus, number> = {
@@ -323,14 +360,304 @@ const SLADataTable = () => {
 
   const hasActiveFilters = searchTerm || batteryFilter !== 'all' || provinceFilter !== 'all' || statusSPFilter !== 'all' || statusSLAFilter !== 'all' || picFilter !== 'all' || dateRange.from || dateRange.to || slaMin !== undefined || slaMax !== undefined;
 
+  // Capture table as PNG: fetch all pages, combine data, generate full image
+  const captureTable = async () => {
+    if (!tableRef.current) return;
+    
+    setIsCapturing(true);
+    setCaptureProgress('Preparing to capture...');
+    
+    try {
+      // Step 1: Fetch all pages from API
+      setCaptureProgress('Fetching all data...');
+      const allSites = await fetchAllPages();
+      
+      if (allSites.length === 0) {
+        console.warn('No data to capture');
+        return;
+      }
+      
+      // Step 2: Create temporary hidden container with full table
+      setCaptureProgress(`Rendering ${allSites.length} rows...`);
+      const tempContainer = createTempTableContainer(allSites);
+      document.body.appendChild(tempContainer);
+      
+      // Wait for DOM to render
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Step 3: Capture with html2canvas
+      setCaptureProgress('Generating image...');
+      const html2canvasModule = await import('html2canvas');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const html2canvas = (html2canvasModule as any).default ?? (html2canvasModule as any);
+      
+      const scale = 2;
+      const canvas = await html2canvas(tempContainer.querySelector('.table-wrapper')!, {
+        scale,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        allowTaint: true,
+      });
+      
+      // Step 4: Download image
+      setCaptureProgress('Downloading...');
+      if (canvas) {
+        canvas.toBlob((blob: Blob | null) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `sla-table-full-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      }
+      
+      // Step 5: Cleanup
+      document.body.removeChild(tempContainer);
+      
+    } catch (err) {
+      console.error('Failed to capture table:', err);
+      setError(err instanceof Error ? err.message : 'Failed to capture table');
+    } finally {
+      setIsCapturing(false);
+      setCaptureProgress('');
+    }
+  };
+  
+  // Helper: Fetch all pages from API
+  const fetchAllPages = async (): Promise<APISite[]> => {
+    const allSites: APISite[] = [];
+    
+    // Calculate date range
+    const defaultDateRange = getSLADateRange();
+    const startDate = dateRange.from 
+      ? format(dateRange.from, 'yyyy-MM-dd')
+      : defaultDateRange.startDate;
+    const endDate = dateRange.to
+      ? format(dateRange.to, 'yyyy-MM-dd')
+      : defaultDateRange.endDate;
+    
+    // Map filters to API format
+    let batteryVersion: string | undefined;
+    if (batteryFilter !== 'all') {
+      const batteryVersionMap: Record<string, string> = {
+        'Talis5 Full': 'talis5',
+        'Talis5 Mix': 'mix',
+        'JS PRO': 'jspro',
+      };
+      batteryVersion = batteryVersionMap[batteryFilter] || batteryFilter;
+    }
+    
+    let statusSP: string | undefined;
+    if (statusSPFilter !== 'all') {
+      statusSP = statusSPFilter;
+    }
+    
+    let statusSLA: string | undefined;
+    if (statusSLAFilter !== 'all') {
+      const statusSLAMap: Record<string, string> = {
+        'Meet SLA': 'good',
+        'Fair': 'warning',
+        'Bad': 'bad',
+        'Very Bad': 'very_bad',
+      };
+      statusSLA = statusSLAMap[statusSLAFilter] || statusSLAFilter;
+    }
+    
+    // Fetch first page to get total pages
+    const firstPageResult = await slaApi.getSLAMasterData({
+      startDate,
+      endDate,
+      page: 1,
+      limit: ITEMS_PER_PAGE,
+      batteryVersion,
+      province: provinceFilter !== 'all' ? provinceFilter : undefined,
+      statusSP,
+      statusSLA,
+      pic: picFilter !== 'all' ? picFilter : undefined,
+      siteName: searchDebounce || undefined,
+      slaMin: slaMin !== undefined ? slaMin : undefined,
+      slaMax: slaMax !== undefined ? slaMax : undefined,
+    });
+    
+    allSites.push(...(firstPageResult.data.sites || []));
+    const totalPages = firstPageResult.pagination?.totalPages || 1;
+    
+    // Fetch remaining pages
+    for (let page = 2; page <= totalPages; page++) {
+      setCaptureProgress(`Fetching page ${page} of ${totalPages}...`);
+      
+      const result = await slaApi.getSLAMasterData({
+        startDate,
+        endDate,
+        page,
+        limit: ITEMS_PER_PAGE,
+        batteryVersion,
+        province: provinceFilter !== 'all' ? provinceFilter : undefined,
+        statusSP,
+        statusSLA,
+        pic: picFilter !== 'all' ? picFilter : undefined,
+        siteName: searchDebounce || undefined,
+        slaMin: slaMin !== undefined ? slaMin : undefined,
+        slaMax: slaMax !== undefined ? slaMax : undefined,
+      });
+      
+      allSites.push(...(result.data.sites || []));
+    }
+    
+    return allSites;
+  };
+  
+  // Helper: Create temporary table container with all rows
+  const createTempTableContainer = (allSites: APISite[]): HTMLDivElement => {
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = 'max-content';
+    
+    // Map API sites to component format
+    const mappedSites = allSites.map((site): Site & { pic: string; problems: unknown[]; slaStatus: SLAStatus } => {
+      const siteName = site.siteName || site.name || site.site_name || 'Unknown';
+      const province = site.province || 'Unknown';
+      
+      const apiBatteryVersion = (site.batteryVersion || site.battery_version || '').toLowerCase();
+      const batteryVersionMap: Record<string, 'Talis5 Full' | 'Talis5 Mix' | 'JS PRO'> = {
+        'talis5': 'Talis5 Full',
+        'mix': 'Talis5 Mix',
+        'jspro': 'JS PRO',
+        'js pro': 'JS PRO',
+      };
+      const batteryVersion = batteryVersionMap[apiBatteryVersion] || 'Talis5 Full';
+      
+      const slaAvg = site.siteSla?.slaAverage || site.slaAvg || site.sla_avg || 0;
+      const status = (site.siteSla?.statusSP || site.status || 'Clear SP') as 'Potensi SP' | 'Clear SP';
+      const problems = site.problem || [];
+      const slaStatus = getSLAStatus(slaAvg);
+      const picLabels = getUniquePics(problems);
+      const pic = picLabels.length > 0 ? picLabels.join(', ') : '-';
+      
+      const dailySla = site.siteSla?.dailySla?.map((day, index) => ({
+        day: index + 1,
+        sla: day.sla,
+      })) || [];
+      
+      return {
+        id: site.siteId || siteName,
+        siteName,
+        province,
+        batteryVersion,
+        installDate: (site.talisInstalled as string) || new Date().toISOString(),
+        slaAvg,
+        status,
+        dailySla,
+        pic,
+        problems,
+        slaStatus,
+      };
+    });
+    
+    // Apply client-side sorting (same as main table)
+    const sortedSites = [...mappedSites].sort((a, b) => {
+      let aVal: string | number;
+      let bVal: string | number;
+      
+      if (sortField === 'pic') {
+        aVal = a.pic;
+        bVal = b.pic;
+      } else if (sortField === 'slaStatus') {
+        const statusPriority: Record<SLAStatus, number> = {
+          'Meet SLA': 4,
+          'Fair': 3,
+          'Bad': 2,
+          'Very Bad': 1,
+        };
+        aVal = statusPriority[a.slaStatus] || 0;
+        bVal = statusPriority[b.slaStatus] || 0;
+      } else {
+        aVal = a[sortField];
+        bVal = b[sortField];
+      }
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      
+      return 0;
+    });
+    
+    // Build table HTML
+    const tableHTML = `
+      <div class="table-wrapper" style="overflow-x: auto; border-radius: 6px; border: 1px solid #e5e7eb; background-color: white; padding: 16px;">
+        <table style="width: 100%; border-collapse: collapse; background-color: white;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e7eb; background-color: rgba(243, 244, 246, 0.5);">
+              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Site Name</th>
+              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Province</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">Battery Version</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">SLA AVG</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">Status SP</th>
+              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">PIC</th>
+              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Problem</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sortedSites.map(site => `
+              <tr style="border-bottom: 1px solid rgba(229, 231, 235, 0.5);">
+                <td style="padding: 12px 16px; font-size: 14px; font-weight: 500; text-align: left;">${site.siteName}</td>
+                <td style="padding: 12px 16px; font-size: 14px; color: #6b7280; text-align: left;">${site.province}</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; min-height: 24px; ${
+                    site.batteryVersion === 'Talis5 Full' ? 'background-color: #dbeafe; color: #1e40af;' :
+                    site.batteryVersion === 'Talis5 Mix' ? 'background-color: #fef3c7; color: #92400e;' :
+                    'background-color: #dcfce7; color: #166534;'
+                  }">${site.batteryVersion}</span>
+                </td>
+                <td style="padding: 12px 16px; font-size: 14px; font-weight: 600; text-align: center; color: ${
+                  site.slaAvg >= 95.5 ? '#16a34a' : site.slaAvg >= 70 ? '#eab308' : '#dc2626'
+                };">${site.slaAvg.toFixed(2)}%</td>
+                <td style="padding: 12px 16px; text-align: center;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; min-height: 24px; ${
+                    site.status === 'Potensi SP' ? 'background-color: rgba(234, 179, 8, 0.1); color: #eab308;' : 'background-color: rgba(22, 163, 74, 0.1); color: #16a34a;'
+                  }">${site.status}</span>
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">
+                  ${getUniquePics(site.problems).length > 0 ? 
+                    getUniquePics(site.problems).map(p => `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; min-height: 24px; margin: 2px; ${
+                      p === 'VSAT' ? 'background-color: rgba(234, 179, 8, 0.1); color: #eab308;' :
+                      p === 'SNMP' || p === 'POWER' ? 'background-color: rgba(59, 130, 246, 0.1); color: #2563eb;' :
+                      'background-color: rgba(107, 114, 128, 0.1); color: #4b5563;'
+                    }">${p}</span>`).join('') :
+                    '<span style="color: #6b7280;">-</span>'
+                  }
+                </td>
+                <td style="padding: 12px 16px; font-size: 14px; text-align: left; color: ${site.problems && site.problems.length > 0 ? '#000' : '#6b7280'};">${formatProblemDescription(site.problems)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    container.innerHTML = tableHTML;
+    return container;
+  };
+
   const columns: { key: SortField; label: string }[] = [
     { key: 'siteName', label: 'Site Name' },
     { key: 'province', label: 'Province' },
     { key: 'batteryVersion', label: 'Battery Version' },
     { key: 'slaAvg', label: 'SLA AVG' },
-    { key: 'slaStatus', label: 'Status SLA' },
     { key: 'status', label: 'Status SP' },
-    { key: 'problemCount', label: 'Problems' },
+    { key: 'pic', label: 'PIC' },
   ];
 
   return (
@@ -339,12 +666,35 @@ const SLADataTable = () => {
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">Data SLA Site</h3>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="h-4 w-4 mr-1" />
-                Clear Filters
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Filters
+                </Button>
+              )}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={captureTable}
+                disabled={isCapturing}
+                className="flex items-center gap-2 bg-primary text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Capture table as PNG"
+                aria-label="Capture table as PNG"
+              >
+                {isCapturing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {captureProgress || 'Capturing...'}
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-4 w-4" />
+                    Capture Table
+                  </>
+                )}
               </Button>
-            )}
+            </div>
           </div>
 
           {/* Filter Bar */}
@@ -530,28 +880,40 @@ const SLADataTable = () => {
           </div>
         )}
 
-        {/* Table */}
+        {/* Table - wrapper dengan ref untuk capture; padding & alignment rapi */}
         {!loading && !error && (
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div
+          ref={tableWrapperRef}
+          className="overflow-x-auto rounded-md border border-border bg-white p-4"
+        >
+          <table ref={tableRef} className="w-full border-collapse bg-white">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-border bg-muted/50">
                 {columns.map(({ key, label }) => (
                   <th
                     key={key}
-                    className="text-left py-3 px-4 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                    className={cn(
+                      "py-3 px-4 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors whitespace-nowrap",
+                      key === 'siteName' || key === 'province' ? "text-left" : "text-center"
+                    )}
                     onClick={() => handleSort(key)}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className={cn(
+                      "flex items-center gap-1",
+                      key === 'siteName' || key === 'province' ? "justify-start" : "justify-center"
+                    )}>
                       {label}
                       <ArrowUpDown className={cn(
-                        "h-3 w-3",
+                        "h-3 w-3 shrink-0",
                         sortField === key && "text-primary"
                       )} />
                     </div>
                   </th>
                 ))}
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  Problem
+                </th>
+                <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">
                   Action
                 </th>
               </tr>
@@ -562,18 +924,18 @@ const SLADataTable = () => {
                   key={site.id}
                   className={cn(
                     "border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors",
-                    getSLABgColor(site.slaAvg)
+                    site.slaAvg
                   )}
                 >
-                  <td className="py-3 px-4 text-sm font-medium text-foreground">
+                  <td className="py-3 px-4 text-sm font-medium text-foreground text-left align-middle">
                     {site.siteName}
                   </td>
-                  <td className="py-3 px-4 text-sm text-muted-foreground">
+                  <td className="py-3 px-4 text-sm text-muted-foreground text-left align-middle">
                     {site.province}
                   </td>
-                  <td className="py-3 px-4 text-sm text-muted-foreground">
+                  <td className="py-3 px-4 text-sm text-muted-foreground text-center align-middle">
                     <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
+                      "inline-flex items-center justify-center px-2 py-1 rounded text-xs font-medium whitespace-nowrap min-h-[24px]",
                       site.batteryVersion === 'Talis5 Full' && "bg-battery-talis5FullLight text-battery-talis5Full",
                       site.batteryVersion === 'Talis5 Mix' && "bg-battery-talis5MixLight text-battery-talis5Mix",
                       site.batteryVersion === 'JS PRO' && "bg-battery-jsproLight text-battery-jspro",
@@ -581,20 +943,12 @@ const SLADataTable = () => {
                       {site.batteryVersion}
                     </span>
                   </td>
-                  <td className={cn("py-3 px-4 text-sm font-semibold", getSLAColor(site.slaAvg))}>
+                  <td className={cn("py-3 px-4 text-sm font-semibold text-center align-middle", getSLAColor(site.slaAvg))}>
                     {site.slaAvg.toFixed(2)}%
                   </td>
-                  <td className="py-3 px-4 text-sm">
+                  <td className="py-3 px-4 text-sm text-center align-middle">
                     <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
-                      getSLAStatusColor(site.slaStatus)
-                    )}>
-                      {site.slaStatus}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm">
-                    <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
+                      "inline-flex items-center justify-center px-2 py-1 rounded text-xs font-medium whitespace-nowrap min-h-[24px]",
                       site.status === 'Potensi SP'
                         ? "bg-status-warning/10 text-status-warning"
                         : "bg-status-good/10 text-status-good"
@@ -602,17 +956,34 @@ const SLADataTable = () => {
                       {site.status}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-sm">
-                    <span className={cn(
-                      "px-2 py-1 rounded text-xs font-medium",
-                      site.problemCount > 0
-                        ? "bg-status-danger/10 text-status-danger"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      {site.problemCount}
-                    </span>
+                  <td className="py-3 px-4 text-sm text-center align-middle">
+                    <div className="flex flex-wrap gap-1 justify-center items-center">
+                      {getUniquePics(site.problems).length > 0 ? (
+                        getUniquePics(site.problems).map((p) => (
+                          <span
+                            key={p}
+                            className={cn(
+                              "inline-flex items-center justify-center px-2 py-1 rounded text-xs font-semibold whitespace-nowrap min-h-[24px]",
+                              getPicColor(p)
+                            )}
+                          >
+                            {p}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className={cn(
+                    "py-3 px-4 text-sm text-left align-middle",
+                    site.problems && site.problems.length > 0
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  )}>
+                    {formatProblemDescription(site.problems)}
+                  </td>
+                  <td className="py-3 px-4 text-center align-middle">
                     <Button
                       variant="outline"
                       size="sm"

@@ -8,6 +8,7 @@ import { Loading } from "@/components/ui/loading";
 import NotFound from "../pages/NotFound";
 import UnderDevelopment from "../pages/UnderDevelopment";
 import Layout from "@/shared/components/layout/Layout";
+import TicketingPage from "@/features/ticketing/pages/TicketingPage";
 
 // Dashboard Page
 const Dashboard = lazy(() => import("../features/dashboard/pages/Dashboard").then(m => ({ default: m.default })));
@@ -25,6 +26,12 @@ const RawSLAPage = lazy(() => import("../features/sla/pages/RawSLAPage").then(m 
 
 // Monitoring Pages
 const MonitoringDashboard = lazy(() => import("../features/monitoring/pages/MonitoringDashboard").then(m => ({ default: m.MonitoringDashboard })));
+
+// Shipping Pages
+const ShippingPage = lazy(() => import("../features/shipping/pages/ShippingPage").then(m => ({ default: m.default })));
+
+// Sparepart Pages
+const SparepartPage = lazy(() => import("../features/sparepart/pages/SparepartPage").then(m => ({ default: m.default })));
 
 const queryClient = new QueryClient();
 
@@ -64,6 +71,7 @@ const App = () => (
                 </Suspense>
               } 
             />
+            
             {/* SLA Bakti Routes */}
             <Route 
               path="/sla-bakti/upload" 
@@ -118,8 +126,25 @@ const App = () => (
             <Route path="/sla-internal/1" element={<UnderDevelopment title="SLA 1" description="Halaman SLA Internal 1" />} />
             <Route path="/sla-internal/2" element={<UnderDevelopment title="SLA 2" description="Halaman SLA Internal 2" />} />
             <Route path="/sla-internal/3" element={<UnderDevelopment title="SLA 3" description="Halaman SLA Internal 3" />} />
-            
+
             {/* Tools Routes */}
+            <Route path="/tools/tickets" element={<TicketingPage />} />
+            <Route 
+              path="/tools/shipping" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman shipping..." />}>
+                  <ShippingPage />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/tools/sparepart" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman sparepart..." />}>
+                  <SparepartPage />
+                </Suspense>
+              } 
+            />
             <Route path="/tools/rekap-battery" element={<UnderDevelopment title="Rekap Battery" description="Halaman rekap battery" />} />
             <Route path="/tools/x" element={<UnderDevelopment title="Menu X" description="Halaman tools menu X" />} />
             

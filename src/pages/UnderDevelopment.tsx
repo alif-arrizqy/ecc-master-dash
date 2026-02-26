@@ -25,7 +25,7 @@ const UnderDevelopment = ({
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-sm text-muted-foreground">
-                Halaman ini akan segera tersedia. Terima kasih atas kesabaran Anda.
+                Halaman ini akan segera tersedia.
               </p>
             </CardContent>
           </Card>
