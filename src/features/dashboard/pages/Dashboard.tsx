@@ -1,6 +1,7 @@
 import SummaryTable from '../components/dashboard/SummaryTable';
 import DailySLAChart from '../components/dashboard/DailySLAChart';
 import CompactDailySLAChart from '../components/dashboard/CompactDailySLAChart';
+import MQTTSummaryCard from '../components/dashboard/MQTTSummaryCard';
 import SLACausesTable from '../components/dashboard/SLACausesTable';
 import GAMASHistoryCard from '../components/dashboard/GAMASHistoryCard';
 import ReportSection from '../components/dashboard/ReportSection';
@@ -11,11 +12,13 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useRefreshCache } from '@/shared/hooks/useRefreshCache';
-import { 
+import {
   useDailySLAChartByBatteryVersion,
   useDailySLAChartAllSites,
+  useDailySLAChartTerrestrial,
   useWeeklySLAChartAllSites,
   useMonthlyReportSummary,
+  useMonthlySummaryTerrestrial,
   useSLAReasons,
   useGAMASHistory,
   useSLAReportDetail,
@@ -45,11 +48,23 @@ const Dashboard = () => {
     error: errorSummary 
   } = useMonthlyReportSummary(currentPeriod);
 
+  // Fetch terrestrial/MQTT data
+  const {
+    data: mqttSummary,
+    isLoading: isLoadingMqttSummary,
+  } = useMonthlySummaryTerrestrial(currentPeriod);
+
+  const {
+    data: dailySLATerrestrial,
+    isLoading: isLoadingTerrestrial,
+    error: errorTerrestrial,
+  } = useDailySLAChartTerrestrial({ startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
+
   // Fetch daily SLA charts (using dashboard date range)
-  const { 
-    data: dailySLAAllSite, 
+  const {
+    data: dailySLAAllSite,
     isLoading: isLoadingAllSites,
-    error: errorAllSites 
+    error: errorAllSites
   } = useDailySLAChartAllSites({ startDate: dashboardDateRange.startDate, endDate: dashboardDateRange.endDate });
 
   const { 
@@ -150,6 +165,12 @@ const Dashboard = () => {
                 {/* Left Column - Summary Tables */}
                 <div className="col-span-12 lg:col-span-3 space-y-4">
                   <SummaryTable data={monthlySummary} />
+                  <MQTTSummaryCard
+                    totalSites={mqttSummary?.totalSites ?? 0}
+                    avgSla={mqttSummary?.avgSla ?? 0}
+                    slaStatus={mqttSummary?.slaStatus ?? ''}
+                    isLoading={isLoadingMqttSummary}
+                  />
                   <SLACausesTable causes={slaCauses} />
                   <GAMASHistoryCard history={gamasHistory} />
                 </div>
@@ -215,10 +236,24 @@ const Dashboard = () => {
                         <AlertDescription>Gagal memuat data JS PRO</AlertDescription>
                       </Alert>
                     ) : (
-                      <CompactDailySLAChart 
-                        data={dailySLAJSPro || []} 
+                      <CompactDailySLAChart
+                        data={dailySLAJSPro || []}
                         title="JS PRO"
                         variant="jsPro"
+                      />
+                    )}
+
+                    {isLoadingTerrestrial ? (
+                      <Loading size="sm" />
+                    ) : errorTerrestrial ? (
+                      <Alert variant="destructive">
+                        <AlertDescription>Gagal memuat data Terestrial/MQTT</AlertDescription>
+                      </Alert>
+                    ) : (
+                      <CompactDailySLAChart
+                        data={dailySLATerrestrial || []}
+                        title="Terestrial / MQTT"
+                        variant="default"
                       />
                     )}
                   </div>
@@ -236,9 +271,9 @@ const Dashboard = () => {
                     <AlertDescription>Gagal memuat data semua site</AlertDescription>
                   </Alert>
                 ) : (
-                  <DailySLAChart 
-                    data={dailySLAAllSite || []} 
-                    title={`SLA ${monthlySummary?.summary.totalSite || 0} Site Sundaya ${currentMonthName}`}
+                  <DailySLAChart
+                    data={dailySLAAllSite || []}
+                    title={`SLA ${monthlySummary?.summary.totalSite || 0} SITE SUNDAYA GABUNGAN SLA MQTT ${currentMonthName.toUpperCase()}`}
                     variant="default"
                   />
                 )}
