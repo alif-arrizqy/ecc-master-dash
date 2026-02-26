@@ -71,9 +71,16 @@ const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDaily
   };
   
   const lastDayOfMonth = getLastDayOfMonth();
-  
-  // Generate X axis ticks for all days in month (1, 2, 3, ... lastDayOfMonth)
-  const xAxisTicks = Array.from({ length: lastDayOfMonth }, (_, i) => i + 1);
+
+  // Start X axis from the first day that has actual data (not always day 1)
+  // This ensures terrestrial/MQTT charts start from when data actually begins
+  const firstDayWithData = data.length > 0 ? Math.min(...data.map(d => d.day)) : 1;
+
+  // Generate X axis ticks only from first actual data point to end of month
+  const xAxisTicks = Array.from(
+    { length: lastDayOfMonth - firstDayWithData + 1 },
+    (_, i) => i + firstDayWithData
+  );
   
   // Add formatted date field to data (for tooltip)
   const formattedData = data.map(item => ({
@@ -137,10 +144,10 @@ const CompactDailySLAChart = ({ data, title, variant = 'default' }: CompactDaily
               stroke="hsl(var(--chart-grid))" 
               vertical={false}
             />
-            <XAxis 
-              dataKey="day" 
+            <XAxis
+              dataKey="day"
               type="number"
-              domain={[1, lastDayOfMonth]}
+              domain={[firstDayWithData, lastDayOfMonth]}
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
               tickLine={false}
               axisLine={{ stroke: 'hsl(var(--border))' }}
