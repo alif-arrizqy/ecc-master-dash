@@ -47,6 +47,10 @@ export const slaApi = {
   /**
    * Get SLA reasons for battery version (Penyebab AVG SLA < 95.5%)
    * GET /api/v1/sla-reason/battery-version/{batteryVersion}
+   *
+   * Returns:
+   * - id: SlaReason.id (for display)
+   * - batteryVersionId: BatteryVersionReason.id — use this for DELETE /battery-version/:id
    */
   getSLAReasonsByBatteryVersion: async (
     batteryVersion: BatteryVersion,
@@ -54,6 +58,7 @@ export const slaApi = {
   ) => {
     return fetchSlaApi<Array<{
       id: number;
+      batteryVersionId: number;
       reason: string;
       createdAt: string;
       updatedAt: string;
