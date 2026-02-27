@@ -1,4 +1,3 @@
-import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Construction } from 'lucide-react';
 
@@ -12,10 +11,7 @@ const UnderDevelopment = ({
   description = 'Halaman ini sedang dalam pengembangan' 
 }: UnderDevelopmentProps) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
-      <Navbar />
-      
-      <main className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[60vh]">
           <Card className="max-w-md w-full card-shadow animate-slide-up">
             <CardHeader className="text-center">
@@ -29,21 +25,11 @@ const UnderDevelopment = ({
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-sm text-muted-foreground">
-                Halaman ini akan segera tersedia. Terima kasih atas kesabaran Anda.
+                Halaman ini akan segera tersedia.
               </p>
             </CardContent>
           </Card>
         </div>
-      </main>
-      
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-card/50 backdrop-blur-sm py-4 mt-8">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} ECC Master Dashboard. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };

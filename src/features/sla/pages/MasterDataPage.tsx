@@ -1,0 +1,34 @@
+import SLADataTable from '../components/sla-bakti/SLADataTable';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Database } from 'lucide-react';
+
+const MasterDataPage = () => {
+  return (
+    <div className="container mx-auto px-4 py-8">
+        {/* Page Header */}
+        <div className="mb-8 animate-fade-in">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20">
+              <Database className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                SLA Master Data
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Tabel data SLA bulan <span className="font-bold">{new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' })}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Data Table Section */}
+        <div className="animate-slide-up">
+          <SLADataTable />
+        </div>
+    </div>
+  );
+};
+
+export default MasterDataPage;
+
