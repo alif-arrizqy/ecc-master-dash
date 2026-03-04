@@ -140,6 +140,7 @@ export interface TicketFilterParams {
   ticketType?: number | '';
   siteName?: string;
   province?: string;
+  picId?: number | '';
 }
 
 // Type guards and utilities
