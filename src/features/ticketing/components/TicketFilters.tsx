@@ -14,22 +14,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, X } from 'lucide-react';
-import type { TicketType } from '../types/ticketing.types';
+import type { TicketType, PIC } from '../types/ticketing.types';
 import type { TicketFilterParams } from '../types/ticketing.types';
 
 interface TicketFiltersProps {
   ticketTypes: TicketType[];
+  pics: PIC[];
   onFilterChange: (filters: Partial<TicketFilterParams>) => void;
   onApply: () => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const TicketFilters = ({ ticketTypes, onFilterChange, onApply: _onApply }: TicketFiltersProps) => {
+export const TicketFilters = ({ ticketTypes, pics, onFilterChange, onApply: _onApply }: TicketFiltersProps) => {
   const [filters, setFilters] = useState({
     siteName: '',
     status: '',
     ticketType: '',
     province: '',
+    picId: '',
   });
 
   const handleFilterChange = (key: string, value: string) => {
@@ -44,12 +46,14 @@ export const TicketFilters = ({ ticketTypes, onFilterChange, onApply: _onApply }
       status: '',
       ticketType: '',
       province: '',
+      picId: '',
     });
     onFilterChange({
       siteName: undefined,
       status: undefined,
       ticketType: undefined,
       province: undefined,
+      picId: undefined,
     });
   };
 
@@ -59,7 +63,7 @@ export const TicketFilters = ({ ticketTypes, onFilterChange, onApply: _onApply }
     <div className="bg-card rounded-lg p-6 card-shadow animate-slide-up mb-6">
       <div className="flex flex-col gap-4">
         {/* Filter bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {/* Site Name Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -112,6 +116,24 @@ export const TicketFilters = ({ ticketTypes, onFilterChange, onApply: _onApply }
               {ticketTypes.map((type) => (
                 <SelectItem key={type.id} value={String(type.id)}>
                   {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* PIC Filter */}
+          <Select
+            value={filters.picId || 'all'}
+            onValueChange={(val) => handleFilterChange('picId', val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Semua PIC" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua PIC</SelectItem>
+              {pics.map((pic) => (
+                <SelectItem key={pic.id} value={String(pic.id)}>
+                  {pic.name}
                 </SelectItem>
               ))}
             </SelectContent>

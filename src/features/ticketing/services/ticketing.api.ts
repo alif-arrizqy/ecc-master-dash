@@ -105,6 +105,7 @@ export const troubleTicketApi = {
         siteId?: string;
         siteName?: string;
         province?: string;
+        picId?: number;
     }): Promise<PaginatedResponse<Ticket[]>> => {
         const response = await troubleTicketApiClient.get<ApiResponse<unknown>>(
             "/api/v1/trouble-ticket",

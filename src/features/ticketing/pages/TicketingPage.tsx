@@ -316,6 +316,7 @@ const TicketingPage = () => {
             <section className="mb-6 animate-slide-up">
                 <TicketFilters
                     ticketTypes={ticketTypesData}
+                    pics={picsData}
                     onFilterChange={(newFilters) => {
                         setFilters((prev) => ({ ...prev, ...newFilters }));
                         setPage(1);
