@@ -168,9 +168,9 @@ export const CreateTicketModal = ({
         const selectedDate = new Date(formData.date_down);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        if (selectedDate > today) {
-            newErrors.date_down = "Date tidak boleh melebihi hari ini";
-        }
+        // if (selectedDate > today) {
+        //     newErrors.date_down = "Date tidak boleh melebihi hari ini";
+        // }
         if (!formData.site_id) {
             newErrors.site_id = "Pilih site";
         }
