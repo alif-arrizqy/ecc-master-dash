@@ -137,7 +137,6 @@ const Dashboard = () => {
   const gamasHistory = gamasHistoryData?.data?.map(item => ({
     date: item.date,
     description: item.description,
-    affectedSites: 0, // API doesn't provide this, set to 0
   })) || [];
 
   // Check if any critical data is loading
