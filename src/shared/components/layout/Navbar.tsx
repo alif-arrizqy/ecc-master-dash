@@ -18,11 +18,14 @@ const Navbar = () => {
   const location = useLocation();
   
   const navItems = [
-    { 
-      to: '/', 
-      label: 'Dashboard', 
+    {
+      label: 'Dashboard',
       icon: LayoutDashboard,
-      hasChildren: false
+      hasChildren: true,
+      children: [
+        { to: '/', label: 'Utama' },
+        { to: '/dashboard/periode', label: 'Per periode' },
+      ],
     },
     {
       label: 'Monitoring',
@@ -157,6 +160,7 @@ const Navbar = () => {
                           <DropdownMenuItem key={child.to} asChild>
                             <NavLink
                               to={child.to}
+                              end={child.to === '/'}
                               className={cn(
                                 "flex items-center gap-2 cursor-pointer",
                                 location.pathname === child.to && "bg-primary/10 text-primary"
@@ -242,6 +246,7 @@ const Navbar = () => {
                           <NavLink
                             key={child.to}
                             to={child.to}
+                            end={child.to === '/'}
                             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                             activeClassName="bg-primary/10 text-primary"
                             onClick={() => setMobileMenuOpen(false)}
@@ -258,7 +263,7 @@ const Navbar = () => {
               return (
                 <NavLink
                   key={item.to}
-                  to={item.to}
+                  to={item.to!}
                   end={item.to === '/'}
                   className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   activeClassName="bg-primary/10 text-primary"
