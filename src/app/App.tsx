@@ -10,8 +10,13 @@ import UnderDevelopment from "../pages/UnderDevelopment";
 import Layout from "@/shared/components/layout/Layout";
 import TicketingPage from "@/features/ticketing/pages/TicketingPage";
 
-// Dashboard Page
+// Dashboard Pages
 const Dashboard = lazy(() => import("../features/dashboard/pages/Dashboard").then(m => ({ default: m.default })));
+const DashboardByPeriod = lazy(() =>
+  import("../features/dashboard/pages/DashboardByPeriod").then((m) => ({
+    default: m.default,
+  })),
+);
 
 // Sites Pages
 const SitesPage = lazy(() => import("../features/sites/SitesPage").then(m => ({ default: m.default })));
@@ -51,7 +56,15 @@ const App = () => (
                 </Suspense>
               } 
             />
-            
+            <Route
+              path="/dashboard/periode"
+              element={
+                <Suspense fallback={<Loading text="Memuat dashboard..." />}>
+                  <DashboardByPeriod />
+                </Suspense>
+              }
+            />
+
             {/* Sites Routes */}
             <Route 
               path="/sites" 

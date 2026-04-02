@@ -108,6 +108,24 @@ export function getSLAMonthName(): string {
   }
 }
 
+const MONTH_NAMES_ID = [
+  'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+  'juli', 'agustus', 'september', 'oktober', 'november', 'desember',
+] as const;
+
+/**
+ * Label tampilan untuk periode `yyyy-MM` (contoh: maret 2025)
+ */
+export function getSLAMonthNameForPeriod(period: string): string {
+  const [y, m] = period.split('-');
+  const year = parseInt(y, 10);
+  const monthIndex = parseInt(m, 10) - 1;
+  if (!Number.isFinite(year) || monthIndex < 0 || monthIndex > 11) {
+    return period;
+  }
+  return `${MONTH_NAMES_ID[monthIndex]} ${year}`;
+}
+
 /**
  * Get start and end date of current month in YYYY-MM-DD format
  * @deprecated Use getSLADateRange() instead for SLA-specific logic
