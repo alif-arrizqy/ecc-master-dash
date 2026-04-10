@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,10 @@ interface SiteMultiSelectProps {
   label?: string;
   options: ResolvedLoggerSite[];
   selectedIds: number[];
-  onChange: (ids: number[]) => void;
+  /** Gunakan `setState` langsung agar multi-pilih tidak tertimpa state lama (stale closure). */
+  onChange: Dispatch<SetStateAction<number[]>>;
+  /** Jika false, hanya satu site (SLA 2 / SLA 3). Default true (SLA 1). */
+  multiple?: boolean;
   disabled?: boolean;
   className?: string;
 }
@@ -28,28 +31,41 @@ export function SiteMultiSelect({
   options,
   selectedIds,
   onChange,
+  multiple = true,
   disabled,
   className,
 }: SiteMultiSelectProps) {
   const [open, setOpen] = useState(false);
 
   const toggle = (id: number) => {
-    if (selectedIds.includes(id)) {
-      onChange(selectedIds.filter((x) => x !== id));
-    } else {
-      onChange([...selectedIds, id]);
+    if (!multiple) {
+      onChange((prev) => {
+        if (prev.length === 1 && prev[0] === id) return [];
+        return [id];
+      });
+      setOpen(false);
+      return;
     }
+    onChange((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const summary =
-    selectedIds.length === 0
+  const singleLabel = useMemo(() => {
+    if (multiple || selectedIds.length !== 1) return null;
+    return options.find((o) => o.loggerId === selectedIds[0])?.label ?? null;
+  }, [multiple, selectedIds, options]);
+
+  const summary = multiple
+    ? selectedIds.length === 0
       ? 'Pilih satu atau lebih site…'
-      : `${selectedIds.length} site dipilih`;
+      : `${selectedIds.length} site dipilih`
+    : singleLabel
+      ? singleLabel
+      : 'Pilih satu site…';
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       <Label className="text-sm font-medium">{label}</Label>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover modal={false} open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -71,7 +87,13 @@ export function SiteMultiSelect({
                 {options.map((o) => {
                   const sel = selectedIds.includes(o.loggerId);
                   return (
-                    <CommandItem key={o.loggerId} value={o.label} onSelect={() => toggle(o.loggerId)}>
+                    <CommandItem
+                      key={o.loggerId}
+                      value={`logger-${o.loggerId}`}
+                      keywords={[o.label, o.siteName, o.siteId, o.nojsCode]}
+                      onSelect={() => toggle(o.loggerId)}
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
                       <Check className={cn('mr-2 h-4 w-4', sel ? 'opacity-100' : 'opacity-0')} />
                       {o.label}
                     </CommandItem>
