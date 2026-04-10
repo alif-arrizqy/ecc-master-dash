@@ -12,6 +12,7 @@ const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
 const SHIPPING_SERVICES_URL = import.meta.env.VITE_SHIPPING_SERVICES_URL;
 const SPAREPART_SERVICES_URL = import.meta.env.VITE_SPAREPART_SERVICES_URL;
 const TROUBLE_TICKET_SERVICES_URL = import.meta.env.VITE_TROUBLE_TICKET_SERVICES_URL;
+const SLA_INTERNAL_API_URL = import.meta.env.VITE_SLA_INTERNAL_API_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
   console.warn('VITE_SLA_SERVICES_URL is not set.');
@@ -31,6 +32,10 @@ if (!import.meta.env.VITE_SPAREPART_SERVICES_URL) {
 
 if (!import.meta.env.VITE_TROUBLE_TICKET_SERVICES_URL) {
   console.warn('VITE_TROUBLE_TICKET_SERVICES_URL is not set.');
+}
+
+if (!import.meta.env.VITE_SLA_INTERNAL_API_URL) {
+  console.warn('VITE_SLA_INTERNAL_API_URL is not set (SLA Internal / logger legacy).');
 }
 
 export type BatteryVersion = 'talis5' | 'mix' | 'jspro';
@@ -107,6 +112,17 @@ export const sparepartApiClient: AxiosInstance = axios.create({
 export const troubleTicketApiClient: AxiosInstance = axios.create({
   baseURL: TROUBLE_TICKET_SERVICES_URL,
   timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Legacy be-sla-apt1v3: /api/logger/sla, /api/nojs, /api/export
+ */
+export const slaInternalApiClient: AxiosInstance = axios.create({
+  baseURL: SLA_INTERNAL_API_URL,
+  timeout: 120000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -488,6 +504,33 @@ troubleTicketApiClient.interceptors.response.use(
       console.error('Trouble Ticket API Error:', error.message);
     }
 
+    return Promise.reject(error);
+  }
+);
+
+slaInternalApiClient.interceptors.request.use(
+  (config) => config,
+  (error) => Promise.reject(error)
+);
+
+slaInternalApiClient.interceptors.response.use(
+  (response) => {
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    const data = response.data as { status?: string; message?: string };
+    if (data && data.status === 'error') {
+      throw new Error(data.message || 'SLA Internal API error');
+    }
+    return response;
+  },
+  (error: AxiosError) => {
+    if (error.response?.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+      const msg = (error.response.data as { message?: string }).message;
+      if (msg) {
+        return Promise.reject(new Error(msg));
+      }
+    }
     return Promise.reject(error);
   }
 );
