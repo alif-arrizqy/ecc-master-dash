@@ -100,7 +100,7 @@ const SlaInternal2Page = () => {
       return;
     }
     if (selectedSites.length === 0) {
-      toast.error('Pilih minimal satu site');
+      toast.error('Pilih satu site');
       return;
     }
     if (start >= end) {
@@ -179,28 +179,34 @@ const SlaInternal2Page = () => {
 
       <Card className="card-shadow animate-slide-up mb-6">
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            <DateTimePickerField label="Start timestamp" value={startParts} onChange={setStartParts} />
-            <DateTimePickerField label="End timestamp" value={endParts} onChange={setEndParts} />
-            <div className="flex flex-col gap-2">
-              <Label className="text-sm font-medium">Tipe baterai</Label>
-              <Select value={battery} onValueChange={(v) => setBattery(v as SlaInternalBattery)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="JSPRO">JSPRO</SelectItem>
-                  <SelectItem value="TALIS5">TALIS5</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 mb-4 md:items-start">
+            <div className="flex flex-col gap-4 min-w-0">
+              <DateTimePickerField label="Tanggal dan Jam Mulai" value={startParts} onChange={setStartParts} />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                <div className="flex flex-col gap-2 w-full sm:w-[200px] sm:shrink-0">
+                  <Label className="text-sm font-medium">Tipe Baterai</Label>
+                  <Select value={battery} onValueChange={(v) => setBattery(v as SlaInternalBattery)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="JSPRO">JSPRO</SelectItem>
+                      <SelectItem value="TALIS5">TALIS5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <SiteMultiSelect
+                  multiple={false}
+                  className="min-w-0 flex-1"
+                  options={siteOptions}
+                  selectedIds={selectedLoggerIds}
+                  onChange={setSelectedLoggerIds}
+                  disabled={sitesLoading}
+                />
+              </div>
             </div>
+            <DateTimePickerField label="Tanggal dan Jam Selesai" value={endParts} onChange={setEndParts} />
           </div>
-          <SiteMultiSelect
-            options={siteOptions}
-            selectedIds={selectedLoggerIds}
-            onChange={setSelectedLoggerIds}
-            disabled={sitesLoading}
-          />
           {sitesLoading && (
             <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />

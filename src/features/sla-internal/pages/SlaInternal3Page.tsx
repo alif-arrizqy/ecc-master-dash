@@ -114,7 +114,7 @@ const SlaInternal3Page = () => {
       return false;
     }
     if (selectedSites.length === 0) {
-      toast.error('Pilih minimal satu site');
+      toast.error('Pilih satu site');
       return false;
     }
     if (start >= end) {
@@ -149,11 +149,7 @@ const SlaInternal3Page = () => {
       }));
       setPreviewRows(trimmed);
       setPreviewMeta({ nojs: first.nojsCode, site: first.siteName });
-      if (selectedSites.length > 1) {
-        toast.message('Preview menampilkan 10 baris pertama dari site pertama yang dipilih. Unduh Excel untuk semua site.');
-      } else {
-        toast.success(`Preview: ${trimmed.length} baris (maks ${PREVIEW_LIMIT})`);
-      }
+      toast.success(`Preview: ${trimmed.length} baris (maks ${PREVIEW_LIMIT})`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal memuat preview SLA 3');
     } finally {
@@ -168,24 +164,23 @@ const SlaInternal3Page = () => {
 
     setDownloading(true);
     try {
-      for (const s of selectedSites) {
-        const blob = await fetchSla3ExportBlob({
-          loggerId: s.loggerId,
-          nojsCode: s.nojsCode,
-          start: qs,
-          end: qe,
-          apt2,
-        });
-        const head = new Uint8Array((await blob.slice(0, 1).arrayBuffer()))[0];
-        if (head === 0x7b) {
-          const text = await blob.text();
-          const j = JSON.parse(text) as { message?: string };
-          throw new Error(`${s.label}: ${j.message || 'gagal export'}`);
-        }
-        const safeName = s.siteName.replace(/[\\/:*?"<>|]/g, '_');
-        triggerBlobDownload(blob, `${safeName}-sla3.xlsx`);
+      const s = selectedSites[0];
+      const blob = await fetchSla3ExportBlob({
+        loggerId: s.loggerId,
+        nojsCode: s.nojsCode,
+        start: qs,
+        end: qe,
+        apt2,
+      });
+      const head = new Uint8Array((await blob.slice(0, 1).arrayBuffer()))[0];
+      if (head === 0x7b) {
+        const text = await blob.text();
+        const j = JSON.parse(text) as { message?: string };
+        throw new Error(`${s.label}: ${j.message || 'gagal export'}`);
       }
-      toast.success(`Selesai mengunduh ${selectedSites.length} file`);
+      const safeName = s.siteName.replace(/[\\/:*?"<>|]/g, '_');
+      triggerBlobDownload(blob, `${safeName}-sla3.xlsx`);
+      toast.success('File Excel diunduh');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Gagal unduh SLA 3');
     } finally {
@@ -222,21 +217,33 @@ const SlaInternal3Page = () => {
 
       <Card className="card-shadow animate-slide-up mb-6">
         <CardContent className="pt-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <DateTimePickerField label="Start timestamp" value={startParts} onChange={setStartParts} />
-            <DateTimePickerField label="End timestamp" value={endParts} onChange={setEndParts} />
-            <div className="flex flex-col gap-2">
-              <Label className="text-sm font-medium">Tipe baterai</Label>
-              <Select value={battery} onValueChange={(v) => setBattery(v as SlaInternalBattery)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="JSPRO">JSPRO</SelectItem>
-                  <SelectItem value="TALIS5">TALIS5</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 md:items-start">
+            <div className="flex flex-col gap-4 min-w-0">
+              <DateTimePickerField label="Tanggal dan Jam Mulai" value={startParts} onChange={setStartParts} />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+                <div className="flex flex-col gap-2 w-full sm:w-[200px] sm:shrink-0">
+                  <Label className="text-sm font-medium">Tipe Baterai</Label>
+                  <Select value={battery} onValueChange={(v) => setBattery(v as SlaInternalBattery)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="JSPRO">JSPRO</SelectItem>
+                      <SelectItem value="TALIS5">TALIS5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <SiteMultiSelect
+                  multiple={false}
+                  className="min-w-0 flex-1"
+                  options={siteOptions}
+                  selectedIds={selectedLoggerIds}
+                  onChange={setSelectedLoggerIds}
+                  disabled={sitesLoading}
+                />
+              </div>
             </div>
+            <DateTimePickerField label="Tanggal dan Jam Selesai" value={endParts} onChange={setEndParts} />
           </div>
           <div className="flex items-center gap-3">
             <Switch id="apt2" checked={apt2} onCheckedChange={setApt2} />
@@ -244,12 +251,6 @@ const SlaInternal3Page = () => {
               apt2=true (kolom tambahan sesuai backend)
             </Label>
           </div>
-          <SiteMultiSelect
-            options={siteOptions}
-            selectedIds={selectedLoggerIds}
-            onChange={setSelectedLoggerIds}
-            disabled={sitesLoading}
-          />
           {sitesLoading && (
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
