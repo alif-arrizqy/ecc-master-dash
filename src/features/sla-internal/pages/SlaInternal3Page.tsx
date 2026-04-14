@@ -1,28 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Download, Loader2, RefreshCw } from 'lucide-react';
+import { BarChart3, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { DateTimePickerField, combineDateTime, type DateTimeParts } from '../components/DateTimePickerField';
 import { SiteMultiSelect } from '../components/SiteMultiSelect';
 import type { SlaInternalBattery, ResolvedLoggerSite } from '../lib/resolve-logger-sites';
 import { resolveLoggerSites } from '../lib/resolve-logger-sites';
 import { toSlaInternalQueryTimestamp } from '../lib/to-sla-query-timestamp';
 import { fetchSla3ExportBlob } from '../services/sla-internal.api';
-import { parseSla3XlsxBlob, triggerBlobDownload } from '../lib/excel-utils';
-
-const PREVIEW_LIMIT = 10;
+import { triggerBlobDownload } from '../lib/excel-utils';
 
 function startPartsDefault(): DateTimeParts {
   const d = new Date();
@@ -36,31 +25,6 @@ function endPartsDefault(): DateTimeParts {
   return { date: d, time: '23:59' };
 }
 
-/** Urutan kolom tampilan (kunci dari sheet Excel backend + meta) */
-const SLA3_DISPLAY: { key: string; label: string }[] = [
-  { key: '_nojs', label: 'NOJS' },
-  { key: '_site', label: 'SITE' },
-  { key: 'Date Time', label: 'DATE TIME' },
-  { key: 'Batt Volt', label: 'BATT VOLT' },
-  { key: 'Vsat Curr', label: 'VSAT CURR' },
-  { key: 'Bts Curr', label: 'BTS CURR' },
-  { key: 'Obl Curr', label: 'OBL CURR' },
-  { key: 'Pv1Curr', label: 'PV1 CURR' },
-  { key: 'Pv2Curr', label: 'PV2 CURR' },
-  { key: 'pv1Volt', label: 'PV1 VOLT' },
-  { key: 'pv2Volt', label: 'PV2 VOLT' },
-  { key: 'Eh1', label: 'EH1' },
-  { key: 'Eh2', label: 'EH2' },
-  { key: 'Eh3', label: 'EH3' },
-  { key: 'Edl1', label: 'EDL1' },
-  { key: 'Edl2', label: 'EDL2' },
-  { key: 'Lvd1', label: 'LVD1' },
-  { key: 'Lvd2', label: 'LVD2' },
-  { key: 'Duration', label: 'DURATION' },
-  { key: 'Real', label: 'REAL' },
-  { key: 'Flag Status', label: 'FLAG STATUS' },
-];
-
 const SlaInternal3Page = () => {
   const [battery, setBattery] = useState<SlaInternalBattery>('JSPRO');
   const [startParts, setStartParts] = useState<DateTimeParts>(startPartsDefault);
@@ -68,10 +32,6 @@ const SlaInternal3Page = () => {
   const [siteOptions, setSiteOptions] = useState<ResolvedLoggerSite[]>([]);
   const [sitesLoading, setSitesLoading] = useState(true);
   const [selectedLoggerIds, setSelectedLoggerIds] = useState<number[]>([]);
-  const [apt2, setApt2] = useState(false);
-  const [previewRows, setPreviewRows] = useState<Record<string, unknown>[]>([]);
-  const [previewMeta, setPreviewMeta] = useState<{ nojs: string; site: string } | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -83,8 +43,6 @@ const SlaInternal3Page = () => {
         if (!cancel) {
           setSiteOptions(r);
           setSelectedLoggerIds([]);
-          setPreviewRows([]);
-          setPreviewMeta(null);
         }
       } catch (e) {
         if (!cancel) {
@@ -124,40 +82,7 @@ const SlaInternal3Page = () => {
     return true;
   };
 
-  const loadPreview = async () => {
-    if (!validateRange()) return;
-    const first = selectedSites[0];
-    const qs = toSlaInternalQueryTimestamp(start!);
-    const qe = toSlaInternalQueryTimestamp(end!);
-
-    setLoadingPreview(true);
-    setPreviewRows([]);
-    setPreviewMeta(null);
-    try {
-      const blob = await fetchSla3ExportBlob({
-        loggerId: first.loggerId,
-        nojsCode: first.nojsCode,
-        start: qs,
-        end: qe,
-        apt2,
-      });
-      const parsed = await parseSla3XlsxBlob(blob);
-      const trimmed = parsed.slice(0, PREVIEW_LIMIT).map((row) => ({
-        ...row,
-        _nojs: first.nojsCode,
-        _site: first.siteName,
-      }));
-      setPreviewRows(trimmed);
-      setPreviewMeta({ nojs: first.nojsCode, site: first.siteName });
-      toast.success(`Preview: ${trimmed.length} baris (maks ${PREVIEW_LIMIT})`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Gagal memuat preview SLA 3');
-    } finally {
-      setLoadingPreview(false);
-    }
-  };
-
-  const downloadAll = async () => {
+  const downloadExcel = async () => {
     if (!validateRange()) return;
     const qs = toSlaInternalQueryTimestamp(start!);
     const qe = toSlaInternalQueryTimestamp(end!);
@@ -170,7 +95,7 @@ const SlaInternal3Page = () => {
         nojsCode: s.nojsCode,
         start: qs,
         end: qe,
-        apt2,
+        dataSource: s.dataSource,
       });
       const head = new Uint8Array((await blob.slice(0, 1).arrayBuffer()))[0];
       if (head === 0x7b) {
@@ -187,18 +112,6 @@ const SlaInternal3Page = () => {
       setDownloading(false);
     }
   };
-
-  const activeCols = useMemo(() => {
-    if (previewRows.length === 0) return SLA3_DISPLAY;
-    const keys = new Set<string>();
-    previewRows.forEach((r) => Object.keys(r).forEach((k) => keys.add(k)));
-    const ordered = SLA3_DISPLAY.filter((c) => keys.has(c.key));
-    const extras = Array.from(keys)
-      .filter((k) => !SLA3_DISPLAY.some((c) => c.key === k) && !k.startsWith('_'))
-      .sort()
-      .map((k) => ({ key: k, label: k.toUpperCase() }));
-    return [...ordered, ...extras];
-  }, [previewRows]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -245,12 +158,6 @@ const SlaInternal3Page = () => {
             </div>
             <DateTimePickerField label="Tanggal dan Jam Selesai" value={endParts} onChange={setEndParts} />
           </div>
-          <div className="flex items-center gap-3">
-            <Switch id="apt2" checked={apt2} onCheckedChange={setApt2} />
-            <Label htmlFor="apt2" className="cursor-pointer text-sm">
-              apt2=true (kolom tambahan sesuai backend)
-            </Label>
-          </div>
           {sitesLoading && (
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -258,68 +165,10 @@ const SlaInternal3Page = () => {
             </p>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button onClick={loadPreview} disabled={loadingPreview || sitesLoading}>
-              {loadingPreview ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Muat preview (10 baris)
-            </Button>
-            <Button variant="default" onClick={downloadAll} disabled={downloading || sitesLoading}>
+            <Button variant="default" onClick={downloadExcel} disabled={downloading || sitesLoading}>
               {downloading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-              Unduh Excel (semua site)
+              Unduh Excel
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="card-shadow overflow-hidden">
-        <CardContent className="p-0">
-          <div className="p-4 border-b border-border">
-            <p className="text-sm text-muted-foreground">
-              {previewMeta
-                ? `Preview: ${previewMeta.nojs} — ${previewMeta.site} (maks. ${PREVIEW_LIMIT} baris)`
-                : 'Klik “Muat preview” setelah memilih filter dan site.'}
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  {activeCols.map((c) => (
-                    <TableHead key={c.key} className="whitespace-nowrap text-xs font-medium">
-                      {c.label}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loadingPreview ? (
-                  <TableRow>
-                    <TableCell colSpan={activeCols.length || 1} className="text-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                    </TableCell>
-                  </TableRow>
-                ) : previewRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={activeCols.length || 1} className="text-center py-12 text-muted-foreground">
-                      Belum ada pratinjau
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  previewRows.map((row, i) => (
-                    <TableRow key={i} className="hover:bg-muted/30">
-                      {activeCols.map((c) => (
-                        <TableCell key={c.key} className="text-xs whitespace-nowrap max-w-[200px] truncate">
-                          {String(row[c.key] ?? '')}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
           </div>
         </CardContent>
       </Card>

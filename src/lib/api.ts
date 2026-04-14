@@ -12,7 +12,7 @@ const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
 const SHIPPING_SERVICES_URL = import.meta.env.VITE_SHIPPING_SERVICES_URL;
 const SPAREPART_SERVICES_URL = import.meta.env.VITE_SPAREPART_SERVICES_URL;
 const TROUBLE_TICKET_SERVICES_URL = import.meta.env.VITE_TROUBLE_TICKET_SERVICES_URL;
-const SLA_INTERNAL_API_URL = import.meta.env.VITE_SLA_INTERNAL_API_URL;
+const SLA_INTERNAL_API_URL = import.meta.env.VITE_SLA_INTERNAL_SERVICES_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
   console.warn('VITE_SLA_SERVICES_URL is not set.');
@@ -34,8 +34,8 @@ if (!import.meta.env.VITE_TROUBLE_TICKET_SERVICES_URL) {
   console.warn('VITE_TROUBLE_TICKET_SERVICES_URL is not set.');
 }
 
-if (!import.meta.env.VITE_SLA_INTERNAL_API_URL) {
-  console.warn('VITE_SLA_INTERNAL_API_URL is not set (SLA Internal / logger legacy).');
+if (!import.meta.env.VITE_SLA_INTERNAL_SERVICES_URL) {
+  console.warn('VITE_SLA_INTERNAL_SERVICES_URL is not set (SLA Internal / logger legacy).');
 }
 
 export type BatteryVersion = 'talis5' | 'mix' | 'jspro';

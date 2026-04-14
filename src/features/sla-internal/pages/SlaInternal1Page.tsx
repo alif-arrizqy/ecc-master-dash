@@ -18,7 +18,10 @@ import { SiteMultiSelect } from '../components/SiteMultiSelect';
 import type { SlaInternalBattery, ResolvedLoggerSite } from '../lib/resolve-logger-sites';
 import { resolveLoggerSites } from '../lib/resolve-logger-sites';
 import { toSlaInternalQueryTimestamp } from '../lib/to-sla-query-timestamp';
-import { fetchSla1ForLogger, type Sla1AggregateRow } from '../services/sla-internal.api';
+import {
+  fetchSla1ForLogger,
+  type Sla1AggregateRow,
+} from '../services/sla-internal.api';
 import { downloadAoAsExcel } from '../lib/excel-utils';
 
 const COLS: { key: keyof Sla1AggregateRow | string; label: string }[] = [
@@ -120,7 +123,12 @@ const SlaInternal1Page = () => {
     try {
       const results = await Promise.all(
         selectedSites.map((s) =>
-          fetchSla1ForLogger({ loggerId: s.loggerId, start: qs, end: qe }).catch((err) => {
+          fetchSla1ForLogger({
+            loggerId: s.loggerId,
+            start: qs,
+            end: qe,
+            dataSource: s.dataSource,
+          }).catch((err) => {
             throw new Error(`${s.label}: ${err instanceof Error ? err.message : 'error'}`);
           })
         )

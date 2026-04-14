@@ -1,6 +1,6 @@
 import type { Site } from '@/features/sites/types';
 import { sitesApi } from '@/shared/lib/api';
-import { fetchNojsUsers } from '../services/sla-internal.api';
+import { fetchNojsUsers, type SlaInternalDataSource } from '../services/sla-internal.api';
 
 export type SlaInternalBattery = 'JSPRO' | 'TALIS5';
 
@@ -13,8 +13,16 @@ export interface ResolvedLoggerSite {
   nojsCode: string;
   siteName: string;
   siteId: string;
+  dataSource: SlaInternalDataSource;
   label: string;
 }
+
+const SOURCE_LABEL: Record<SlaInternalDataSource, string> = {
+  apt1: 'APT1',
+  apt2: 'APT2',
+  talis5: 'TALIS5',
+  terestrial: 'TERESTRIAL',
+};
 
 function norm(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -61,24 +69,43 @@ async function fetchAllSitesForBattery(battery: SlaInternalBattery): Promise<Sit
 /**
  * Gabungkan master Sites (filter battery) dengan baris `/api/nojs` (id logger dipakai di query SLA).
  */
-export async function resolveLoggerSites(battery: SlaInternalBattery): Promise<ResolvedLoggerSite[]> {
-  const [nojsRows, sites] = await Promise.all([fetchNojsUsers(), fetchAllSitesForBattery(battery)]);
+export async function resolveLoggerSites(
+  battery: SlaInternalBattery
+): Promise<ResolvedLoggerSite[]> {
+  const sources: SlaInternalDataSource[] = battery === 'JSPRO' ? ['apt1', 'apt2'] : ['talis5', 'terestrial'];
+  const [sites, sourceRows] = await Promise.all([
+    fetchAllSitesForBattery(battery),
+    Promise.all(
+      sources.map(async (source) => {
+        try {
+          const rows = await fetchNojsUsers(source);
+          return { source, rows };
+        } catch {
+          return { source, rows: [] };
+        }
+      })
+    ),
+  ]);
 
   const resolved: ResolvedLoggerSite[] = [];
 
-  for (const site of sites) {
-    let row = nojsRows.find((n) => String(n.nojs) === String(site.siteId));
-    if (!row) {
-      row = nojsRows.find((n) => norm(String(n.site)) === norm(site.siteName));
-    }
-    if (row && typeof row.id === 'number') {
-      resolved.push({
-        loggerId: row.id,
-        nojsCode: String(row.nojs),
-        siteName: site.siteName,
-        siteId: site.siteId,
-        label: `${site.siteName} (${row.nojs})`,
-      });
+  for (const { source, rows } of sourceRows) {
+    for (const site of sites) {
+      let row = rows.find((n) => String(n.nojs) === String(site.siteId));
+      if (!row) {
+        row = rows.find((n) => norm(String(n.site)) === norm(site.siteName));
+      }
+      if (row && typeof row.id === 'number') {
+        const identifier = source === 'terestrial' ? String(site.siteId) : String(row.nojs);
+        resolved.push({
+          loggerId: row.id,
+          nojsCode: String(row.nojs),
+          siteName: site.siteName,
+          siteId: site.siteId,
+          dataSource: source,
+          label: `${SOURCE_LABEL[source]} - ${site.siteName} - (${identifier})`,
+        });
+      }
     }
   }
 

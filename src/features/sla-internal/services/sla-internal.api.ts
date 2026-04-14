@@ -19,8 +19,12 @@ export interface NojsUserRow {
   [key: string]: unknown;
 }
 
-export async function fetchNojsUsers(): Promise<NojsUserRow[]> {
-  const res = await slaInternalApiClient.get<LegacyBody<NojsUserRow[]>>('/api/nojs');
+export type SlaInternalDataSource = 'apt1' | 'apt2' | 'talis5' | 'terestrial';
+
+export async function fetchNojsUsers(dataSource?: SlaInternalDataSource): Promise<NojsUserRow[]> {
+  const res = await slaInternalApiClient.get<LegacyBody<NojsUserRow[]>>('/api/nojs', {
+    params: dataSource ? { dataSource } : undefined,
+  });
   return res.data.data ?? [];
 }
 
@@ -50,12 +54,14 @@ export async function fetchSla1ForLogger(params: {
   loggerId: number;
   start: string;
   end: string;
+  dataSource?: SlaInternalDataSource;
 }): Promise<Sla1AggregateRow> {
   const res = await slaInternalApiClient.get<LegacyBody<Sla1AggregateRow[]>>('/api/logger/sla', {
     params: {
       nojs: params.loggerId,
       start: params.start,
       end: params.end,
+      ...(params.dataSource ? { dataSource: params.dataSource } : {}),
     },
   });
   const row = res.data.data?.[0];
@@ -87,6 +93,7 @@ export async function fetchSla2ForLogger(params: {
   loggerId: number;
   start: string;
   end: string;
+  dataSource?: SlaInternalDataSource;
 }): Promise<Sla2DailyRow[]> {
   const res = await slaInternalApiClient.get<LegacyBody<Sla2DailyRow[]>>('/api/logger/sla', {
     params: {
@@ -94,6 +101,7 @@ export async function fetchSla2ForLogger(params: {
       start: params.start,
       end: params.end,
       daily: 'true',
+      ...(params.dataSource ? { dataSource: params.dataSource } : {}),
     },
   });
   return res.data.data ?? [];
@@ -104,7 +112,7 @@ export async function fetchSla3ExportBlob(params: {
   nojsCode: string;
   start: string;
   end: string;
-  apt2?: boolean;
+  dataSource?: SlaInternalDataSource;
 }): Promise<Blob> {
   const res = await slaInternalApiClient.get('/api/export', {
     params: {
@@ -112,7 +120,7 @@ export async function fetchSla3ExportBlob(params: {
       nojsCode: params.nojsCode,
       start: params.start,
       end: params.end,
-      ...(params.apt2 ? { apt2: 'true' } : {}),
+      ...(params.dataSource ? { dataSource: params.dataSource } : {}),
     },
     responseType: 'blob',
   });
