@@ -109,6 +109,12 @@ export interface CloseTicketFormData {
   action: string;
 }
 
+export interface ManualStatusUpdateFormData {
+  status: TicketStatus;
+  date: string; // YYYY-MM-DD
+  action: string;
+}
+
 // API Response Types
 export interface ApiResponse<T> {
   success: boolean;
