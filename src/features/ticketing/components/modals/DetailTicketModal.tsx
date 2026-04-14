@@ -10,16 +10,34 @@ import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Edit, Plus, X, Pencil, Trash2, Check, AlertTriangle, Lock, RefreshCcw } from "lucide-react";
+import {
+    Edit,
+    Plus,
+    X,
+    Pencil,
+    Trash2,
+    Check,
+    AlertTriangle,
+    Lock,
+    RefreshCcw,
+    ChevronDown,
+} from "lucide-react";
 import { StatusBadge } from "../StatusBadge";
 import { SLABadge } from "../SLABadge";
 import { troubleTicketApi } from "../../services/ticketing.api";
@@ -501,63 +519,52 @@ export const DetailTicketModal = ({
                     </Card>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
+                <DialogFooter className="border-t pt-4 flex-col gap-2 sm:flex-row sm:justify-between">
                     {/* Close modal */}
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
-                        className="border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 transition-all duration-200"
+                        className="w-full sm:w-auto border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
                     >
                         <X className="h-4 w-4 mr-1.5" />
                         Tutup
                     </Button>
 
-                    {/* Edit ticket */}
-                    {!isTicketClosed && onEdit && (
-                        <Button
-                            onClick={onEdit}
-                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                        >
-                            <Edit className="h-4 w-4 mr-1.5" />
-                            Edit Ticket
-                        </Button>
-                    )}
-
-                    {/* Add Progress */}
-                    {!isTicketClosed && onAddProgress && (
-                        <Button
-                            onClick={onAddProgress}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                        >
-                            <Plus className="h-4 w-4 mr-1.5" />
-                            Add Progress
-                        </Button>
-                    )}
-
-                    {/* Manual Status Update */}
-                    {onUpdateStatus && (
-                        <Button
-                            onClick={onUpdateStatus}
-                            variant="outline"
-                            className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-all duration-200"
-                        >
-                            <RefreshCcw className="h-4 w-4 mr-1.5" />
-                            Ubah Status
-                        </Button>
-                    )}
-
-                    {/* Close Ticket */}
-                    {!isTicketClosed && onClose && (
-                        <Button
-                            onClick={onClose}
-                            className="bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                        >
-                            <Lock className="h-4 w-4 mr-1.5" />
-                            Close Ticket
-                        </Button>
-                    )}
-                </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button className="w-full sm:w-auto">
+                                Aksi
+                                <ChevronDown className="h-4 w-4 ml-1.5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                            {!isTicketClosed && onEdit && (
+                                <DropdownMenuItem onClick={onEdit}>
+                                    <Edit className="h-4 w-4 mr-2 text-blue-600" />
+                                    Edit Ticket
+                                </DropdownMenuItem>
+                            )}
+                            {!isTicketClosed && onAddProgress && (
+                                <DropdownMenuItem onClick={onAddProgress}>
+                                    <Plus className="h-4 w-4 mr-2 text-emerald-600" />
+                                    Add Progress
+                                </DropdownMenuItem>
+                            )}
+                            {onUpdateStatus && (
+                                <DropdownMenuItem onClick={onUpdateStatus}>
+                                    <RefreshCcw className="h-4 w-4 mr-2 text-amber-600" />
+                                    Ubah Status
+                                </DropdownMenuItem>
+                            )}
+                            {!isTicketClosed && onClose && (
+                                <DropdownMenuItem onClick={onClose}>
+                                    <Lock className="h-4 w-4 mr-2 text-red-600" />
+                                    Close Ticket
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
