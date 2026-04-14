@@ -23,6 +23,7 @@ import type {
     EditTicketFormData,
     AddProgressFormData,
     CloseTicketFormData,
+    ManualStatusUpdateFormData,
 } from "../types/ticketing.types";
 
 /**
@@ -190,6 +191,21 @@ export const troubleTicketApi = {
         const response = await troubleTicketApiClient.put<ApiResponse<unknown>>(
             `/api/v1/trouble-ticket/close/${ticketNumber}`,
             payload,
+        );
+        return transformTicket(response.data.data);
+    },
+
+    /**
+     * Update ticket status manually (progress/pending/closed)
+     * PUT /api/v1/trouble-ticket/status/:ticketNumber
+     */
+    updateStatus: async (
+        ticketNumber: string,
+        data: ManualStatusUpdateFormData,
+    ): Promise<Ticket> => {
+        const response = await troubleTicketApiClient.put<ApiResponse<unknown>>(
+            `/api/v1/trouble-ticket/status/${ticketNumber}`,
+            data,
         );
         return transformTicket(response.data.data);
     },

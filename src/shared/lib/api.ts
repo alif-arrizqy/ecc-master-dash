@@ -6,7 +6,15 @@
 import type { AxiosRequestConfig } from 'axios';
 
 // Re-export base clients dari lib/api.ts
-export { slaApiClient, sitesApiClient, monitoringApiClient, shippingApiClient, sparepartApiClient, troubleTicketApiClient } from '@/lib/api';
+export {
+  slaApiClient,
+  sitesApiClient,
+  monitoringApiClient,
+  shippingApiClient,
+  sparepartApiClient,
+  troubleTicketApiClient,
+  slaInternalApiClient,
+} from '@/lib/api';
 export type { BatteryVersion } from '@/lib/api';
 
 /**

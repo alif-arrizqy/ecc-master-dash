@@ -29,6 +29,17 @@ const ReasonPage = lazy(() => import("../features/sla/pages/ReasonPage").then(m 
 const HistoryGAMASPage = lazy(() => import("../features/sla/pages/HistoryGAMASPage").then(m => ({ default: m.default })));
 const RawSLAPage = lazy(() => import("../features/sla/pages/RawSLAPage").then(m => ({ default: m.default })));
 
+// SLA Internal (logger legacy)
+const SlaInternal1Page = lazy(() =>
+  import("../features/sla-internal/pages/SlaInternal1Page").then((m) => ({ default: m.default })),
+);
+const SlaInternal2Page = lazy(() =>
+  import("../features/sla-internal/pages/SlaInternal2Page").then((m) => ({ default: m.default })),
+);
+const SlaInternal3Page = lazy(() =>
+  import("../features/sla-internal/pages/SlaInternal3Page").then((m) => ({ default: m.default })),
+);
+
 // Monitoring Pages
 const MonitoringDashboard = lazy(() => import("../features/monitoring/pages/MonitoringDashboard").then(m => ({ default: m.MonitoringDashboard })));
 
@@ -136,9 +147,30 @@ const App = () => (
             />
             
             {/* SLA Internal Routes */}
-            <Route path="/sla-internal/1" element={<UnderDevelopment title="SLA 1" description="Halaman SLA Internal 1" />} />
-            <Route path="/sla-internal/2" element={<UnderDevelopment title="SLA 2" description="Halaman SLA Internal 2" />} />
-            <Route path="/sla-internal/3" element={<UnderDevelopment title="SLA 3" description="Halaman SLA Internal 3" />} />
+            <Route
+              path="/sla-internal/1"
+              element={
+                <Suspense fallback={<Loading text="Memuat SLA Internal 1..." />}>
+                  <SlaInternal1Page />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/sla-internal/2"
+              element={
+                <Suspense fallback={<Loading text="Memuat SLA Internal 2..." />}>
+                  <SlaInternal2Page />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/sla-internal/3"
+              element={
+                <Suspense fallback={<Loading text="Memuat SLA Internal 3..." />}>
+                  <SlaInternal3Page />
+                </Suspense>
+              }
+            />
 
             {/* Tools Routes */}
             <Route path="/tools/tickets" element={<TicketingPage />} />

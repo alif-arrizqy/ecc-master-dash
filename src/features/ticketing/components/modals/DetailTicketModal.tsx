@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Edit, Plus, X, Pencil, Trash2, Check, AlertTriangle, Lock } from "lucide-react";
+import { Edit, Plus, X, Pencil, Trash2, Check, AlertTriangle, Lock, RefreshCcw } from "lucide-react";
 import { StatusBadge } from "../StatusBadge";
 import { SLABadge } from "../SLABadge";
 import { troubleTicketApi } from "../../services/ticketing.api";
@@ -32,6 +32,7 @@ interface DetailTicketModalProps {
     onEdit?: () => void;
     onAddProgress?: () => void;
     onClose?: () => void;
+    onUpdateStatus?: () => void;
 }
 
 interface EditingProgress {
@@ -47,6 +48,7 @@ export const DetailTicketModal = ({
     onEdit,
     onAddProgress,
     onClose,
+    onUpdateStatus,
 }: DetailTicketModalProps) => {
     const queryClient = useQueryClient();
     const [editingProgress, setEditingProgress] = useState<EditingProgress | null>(null);
@@ -530,6 +532,18 @@ export const DetailTicketModal = ({
                         >
                             <Plus className="h-4 w-4 mr-1.5" />
                             Add Progress
+                        </Button>
+                    )}
+
+                    {/* Manual Status Update */}
+                    {onUpdateStatus && (
+                        <Button
+                            onClick={onUpdateStatus}
+                            variant="outline"
+                            className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-all duration-200"
+                        >
+                            <RefreshCcw className="h-4 w-4 mr-1.5" />
+                            Ubah Status
                         </Button>
                     )}
 

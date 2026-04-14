@@ -19,6 +19,7 @@ import { EditTicketModal } from "../components/modals/EditTicketModal";
 import { AddProgressModal } from "../components/modals/AddProgressModal";
 import { CloseTicketModal } from "../components/modals/CloseTicketModal";
 import { CreateTicketModal } from "../components/modals/CreateTicketModal";
+import { UpdateStatusModal } from "../components/modals/UpdateStatusModal";
 import { troubleTicketApi } from "../services/ticketing.api";
 import type {
     Ticket,
@@ -27,6 +28,7 @@ import type {
     EditTicketFormData,
     AddProgressFormData,
     CloseTicketFormData,
+    ManualStatusUpdateFormData,
 } from "../types/ticketing.types";
 
 const TicketingPage = () => {
@@ -44,6 +46,7 @@ const TicketingPage = () => {
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [addProgressModalOpen, setAddProgressModalOpen] = useState(false);
     const [closeTicketModalOpen, setCloseTicketModalOpen] = useState(false);
+    const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
 
     // State for selected ticket
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -151,6 +154,30 @@ const TicketingPage = () => {
         },
     });
 
+    const updateStatusMutation = useMutation({
+        mutationFn: ({
+            ticketNumber,
+            data,
+        }: {
+            ticketNumber: string;
+            data: ManualStatusUpdateFormData;
+        }) => troubleTicketApi.updateStatus(ticketNumber, data),
+        onSuccess: () => {
+            toast.success("Status ticket berhasil diperbarui");
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+            queryClient.invalidateQueries({ queryKey: ["ticket-detail"] });
+            queryClient.invalidateQueries({ queryKey: ["progress-history"] });
+            setUpdateStatusModalOpen(false);
+            setSelectedTicket(null);
+        },
+        onError: (error) => {
+            toast.error("Gagal mengubah status ticket", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        },
+    });
+
     const deleteMutation = useMutation({
         mutationFn: (ticketNumber: string) =>
             troubleTicketApi.delete(ticketNumber),
@@ -190,6 +217,12 @@ const TicketingPage = () => {
         setCloseTicketModalOpen(true);
     };
 
+    const handleOpenUpdateStatus = (ticket: Ticket) => {
+        setSelectedTicket(ticket);
+        setDetailModalOpen(false);
+        setUpdateStatusModalOpen(true);
+    };
+
     const handleDelete = (ticket: Ticket) => {
         if (window.confirm("Apakah Anda yakin ingin menghapus ticket ini?")) {
             deleteMutation.mutate(ticket.ticket_number);
@@ -221,6 +254,15 @@ const TicketingPage = () => {
     const handleCloseSubmit = (data: CloseTicketFormData) => {
         if (selectedTicket) {
             closeTicketMutation.mutate({
+                ticketNumber: selectedTicket.ticket_number,
+                data,
+            });
+        }
+    };
+
+    const handleUpdateStatusSubmit = (data: ManualStatusUpdateFormData) => {
+        if (selectedTicket) {
+            updateStatusMutation.mutate({
                 ticketNumber: selectedTicket.ticket_number,
                 data,
             });
@@ -367,6 +409,7 @@ const TicketingPage = () => {
                 onEdit={() => handleEdit(selectedTicket!)}
                 onAddProgress={() => handleAddProgress(selectedTicket!)}
                 onClose={() => handleCloseTicket(selectedTicket!)}
+                onUpdateStatus={() => handleOpenUpdateStatus(selectedTicket!)}
             />
 
             {/* Edit Ticket Modal */}
@@ -397,6 +440,14 @@ const TicketingPage = () => {
                 ticket={selectedTicket || undefined}
                 isSubmitting={closeTicketMutation.isPending}
                 onSubmit={handleCloseSubmit}
+            />
+
+            <UpdateStatusModal
+                open={updateStatusModalOpen}
+                onOpenChange={setUpdateStatusModalOpen}
+                ticket={selectedTicket || undefined}
+                isSubmitting={updateStatusMutation.isPending}
+                onSubmit={handleUpdateStatusSubmit}
             />
         </div>
     );
