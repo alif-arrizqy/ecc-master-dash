@@ -8,6 +8,12 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    allowedHosts: ["ecc-dashboard.sundaya.local"],
+  },
+  preview: {
+    host: "::",
+    port: 8080,
+    allowedHosts: ["ecc-dashboard.sundaya.local"],
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
