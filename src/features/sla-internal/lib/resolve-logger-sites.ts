@@ -4,6 +4,9 @@ import { fetchNojsUsers, type SlaInternalDataSource } from '../services/sla-inte
 
 export type SlaInternalBattery = 'JSPRO' | 'TALIS5';
 
+/** Filter `status` pada GET /api/v1/sites/ (sites-services). */
+export type SlaInternalStatusSitesFilter = 'all' | 'terestrial' | 'non_terestrial';
+
 export function batteryToSitesApiParam(b: SlaInternalBattery): string {
   return b === 'JSPRO' ? 'jspro' : 'talis5';
 }
@@ -13,7 +16,7 @@ export interface ResolvedLoggerSite {
   nojsCode: string;
   siteName: string;
   siteId: string;
-  dataSource: SlaInternalDataSource;
+  dataSource?: SlaInternalDataSource;
   label: string;
 }
 
@@ -24,18 +27,37 @@ const SOURCE_LABEL: Record<SlaInternalDataSource, string> = {
   terestrial: 'TERESTRIAL',
 };
 
-function norm(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, ' ');
+function normalizeNojs(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
 }
 
-async function fetchAllSitesForBattery(battery: SlaInternalBattery): Promise<Site[]> {
+function statusToApiParam(
+  status: SlaInternalStatusSitesFilter
+): string | undefined {
+  if (status === 'all') return undefined;
+  return status;
+}
+
+function batteryVersionsForSla(battery: SlaInternalBattery): string[] {
+  return battery === 'JSPRO' ? ['jspro'] : ['talis5', 'mix'];
+}
+
+async function fetchAllSitesOneBatteryVersion(
+  batteryVersion: string,
+  status: SlaInternalStatusSitesFilter
+): Promise<Site[]> {
+  const statusParam = statusToApiParam(status);
   const first = await sitesApi.getSites({
-    batteryVersion: batteryToSitesApiParam(battery),
+    batteryVersion,
     limit: 100,
     page: 1,
     isActive: true,
     sortBy: 'siteName',
     sortOrder: 'asc',
+    ...(statusParam ? { status: statusParam } : {}),
   });
 
   let sites = (first.data as Site[]) ?? [];
@@ -45,12 +67,13 @@ async function fetchAllSitesForBattery(battery: SlaInternalBattery): Promise<Sit
     const pages = await Promise.all(
       Array.from({ length: totalPages - 1 }, (_, i) =>
         sitesApi.getSites({
-          batteryVersion: batteryToSitesApiParam(battery),
+          batteryVersion,
           limit: 100,
           page: i + 2,
           isActive: true,
           sortBy: 'siteName',
           sortOrder: 'asc',
+          ...(statusParam ? { status: statusParam } : {}),
         })
       )
     );
@@ -66,19 +89,46 @@ async function fetchAllSitesForBattery(battery: SlaInternalBattery): Promise<Sit
   return Array.from(byId.values());
 }
 
+/** Master sites: TALIS5 menggabungkan baris battery `talis5` dan `mix` dari sites-services. */
+async function fetchMasterSitesForBattery(
+  battery: SlaInternalBattery,
+  statusSites: SlaInternalStatusSitesFilter
+): Promise<Site[]> {
+  const versions = batteryVersionsForSla(battery);
+  const merged: Site[] = [];
+  for (const v of versions) {
+    merged.push(...(await fetchAllSitesOneBatteryVersion(v, statusSites)));
+  }
+  const byId = new Map<string, Site>();
+  for (const s of merged) {
+    if (!byId.has(s.siteId)) byId.set(s.siteId, s);
+  }
+  return Array.from(byId.values());
+}
+
 /**
- * Gabungkan master Sites (filter battery) dengan baris `/api/nojs` (id logger dipakai di query SLA).
+ * Gabungkan master Sites (filter battery + status terestrial) dengan baris `/api/nojs` (id logger dipakai di query SLA).
  */
 export async function resolveLoggerSites(
-  battery: SlaInternalBattery
+  battery: SlaInternalBattery,
+  options?: { statusSites?: SlaInternalStatusSitesFilter }
 ): Promise<ResolvedLoggerSite[]> {
-  const sources: SlaInternalDataSource[] = battery === 'JSPRO' ? ['apt1', 'apt2'] : ['talis5', 'terestrial'];
+  const statusSites = options?.statusSites ?? 'all';
+  // Untuk TALIS5+MIX tidak ada dataSource khusus di sla-internal-services.
+  // Jadi untuk TALIS/MIX semua endpoint dipanggil tanpa query param `dataSource`.
+  const sources: Array<{ label: string; dataSource?: SlaInternalDataSource }> =
+    battery === 'JSPRO'
+      ? [
+          { label: SOURCE_LABEL.apt1, dataSource: 'apt1' },
+          { label: SOURCE_LABEL.apt2, dataSource: 'apt2' },
+        ]
+      : [{ label: 'TALIS/MIX' }];
   const [sites, sourceRows] = await Promise.all([
-    fetchAllSitesForBattery(battery),
+    fetchMasterSitesForBattery(battery, statusSites),
     Promise.all(
       sources.map(async (source) => {
         try {
-          const rows = await fetchNojsUsers(source);
+          const rows = await fetchNojsUsers(source.dataSource);
           return { source, rows };
         } catch {
           return { source, rows: [] };
@@ -90,20 +140,25 @@ export async function resolveLoggerSites(
   const resolved: ResolvedLoggerSite[] = [];
 
   for (const { source, rows } of sourceRows) {
+    const rowByNojs = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      const key = normalizeNojs(row.nojs);
+      if (key) rowByNojs.set(key, row);
+    }
     for (const site of sites) {
-      let row = rows.find((n) => String(n.nojs) === String(site.siteId));
-      if (!row) {
-        row = rows.find((n) => norm(String(n.site)) === norm(site.siteName));
-      }
+      const siteNojs = normalizeNojs(site.noJS);
+      const siteIdAsFallback = normalizeNojs(site.siteId);
+      const row = rowByNojs.get(siteNojs) ?? rowByNojs.get(siteIdAsFallback);
       if (row && typeof row.id === 'number') {
-        const identifier = source === 'terestrial' ? String(site.siteId) : String(row.nojs);
+        const identifier = String(row.nojs);
+        const resolvedSiteName = String(row.site || site.siteName);
         resolved.push({
           loggerId: row.id,
           nojsCode: String(row.nojs),
-          siteName: site.siteName,
+          siteName: resolvedSiteName,
           siteId: site.siteId,
-          dataSource: source,
-          label: `${SOURCE_LABEL[source]} - ${site.siteName} - (${identifier})`,
+          dataSource: source.dataSource,
+          label: `${source.label} - (${identifier}) - ${resolvedSiteName}`,
         });
       }
     }

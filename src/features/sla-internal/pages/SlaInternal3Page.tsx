@@ -7,7 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateTimePickerField, combineDateTime, type DateTimeParts } from '../components/DateTimePickerField';
 import { SiteMultiSelect } from '../components/SiteMultiSelect';
-import type { SlaInternalBattery, ResolvedLoggerSite } from '../lib/resolve-logger-sites';
+import type {
+  SlaInternalBattery,
+  ResolvedLoggerSite,
+  SlaInternalStatusSitesFilter,
+} from '../lib/resolve-logger-sites';
 import { resolveLoggerSites } from '../lib/resolve-logger-sites';
 import { toSlaInternalQueryTimestamp } from '../lib/to-sla-query-timestamp';
 import { fetchSla3ExportBlob } from '../services/sla-internal.api';
@@ -27,6 +31,7 @@ function endPartsDefault(): DateTimeParts {
 
 const SlaInternal3Page = () => {
   const [battery, setBattery] = useState<SlaInternalBattery>('JSPRO');
+  const [statusSites, setStatusSites] = useState<SlaInternalStatusSitesFilter>('all');
   const [startParts, setStartParts] = useState<DateTimeParts>(startPartsDefault);
   const [endParts, setEndParts] = useState<DateTimeParts>(endPartsDefault);
   const [siteOptions, setSiteOptions] = useState<ResolvedLoggerSite[]>([]);
@@ -39,7 +44,7 @@ const SlaInternal3Page = () => {
     (async () => {
       setSitesLoading(true);
       try {
-        const r = await resolveLoggerSites(battery);
+        const r = await resolveLoggerSites(battery, { statusSites });
         if (!cancel) {
           setSiteOptions(r);
           setSelectedLoggerIds([]);
@@ -56,7 +61,7 @@ const SlaInternal3Page = () => {
     return () => {
       cancel = true;
     };
-  }, [battery]);
+  }, [battery, statusSites]);
 
   const start = combineDateTime(startParts);
   const end = combineDateTime(endParts);
@@ -133,7 +138,7 @@ const SlaInternal3Page = () => {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 md:items-start">
             <div className="flex flex-col gap-4 min-w-0">
               <DateTimePickerField label="Tanggal dan Jam Mulai" value={startParts} onChange={setStartParts} />
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4 flex-wrap">
                 <div className="flex flex-col gap-2 w-full sm:w-[200px] sm:shrink-0">
                   <Label className="text-sm font-medium">Tipe Baterai</Label>
                   <Select value={battery} onValueChange={(v) => setBattery(v as SlaInternalBattery)}>
@@ -142,7 +147,23 @@ const SlaInternal3Page = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="JSPRO">JSPRO</SelectItem>
-                      <SelectItem value="TALIS5">TALIS5</SelectItem>
+                      <SelectItem value="TALIS5">TALIS5 + MIX</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-2 w-full sm:w-[200px] sm:shrink-0">
+                  <Label className="text-sm font-medium">Status site (terestrial)</Label>
+                  <Select
+                    value={statusSites}
+                    onValueChange={(v) => setStatusSites(v as SlaInternalStatusSitesFilter)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua</SelectItem>
+                      <SelectItem value="terestrial">Terestrial</SelectItem>
+                      <SelectItem value="non_terestrial">Non-terestrial</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
