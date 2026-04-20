@@ -82,7 +82,7 @@ export function SiteMultiSelect({
           <Command>
             <CommandInput placeholder="Cari site…" />
             <CommandList>
-              <CommandEmpty>Tidak ada site (periksa filter baterai / join master sites).</CommandEmpty>
+              <CommandEmpty>Tidak ada site (periksa filter baterai, status terestrial, dan join master sites).</CommandEmpty>
               <CommandGroup>
                 {options.map((o) => {
                   const sel = selectedIds.includes(o.loggerId);
