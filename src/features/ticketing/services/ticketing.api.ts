@@ -304,6 +304,17 @@ export const troubleTicketApi = {
         );
         return response.data as Blob;
     },
+
+    /**
+     * Get ticket summary statistics
+     * GET /api/v1/trouble-ticket/summary
+     */
+    getSummary: async (): Promise<TicketSummary> => {
+        const response = await troubleTicketApiClient.get<ApiResponse<TicketSummary>>(
+            "/api/v1/trouble-ticket/summary",
+        );
+        return response.data.data;
+    },
 };
 
 /**

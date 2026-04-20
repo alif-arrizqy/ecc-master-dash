@@ -7,7 +7,16 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, Ticket as TicketIcon, FileDown } from "lucide-react";
+import { 
+    Plus, 
+    RefreshCw, 
+    Ticket as TicketIcon, 
+    FileDown, 
+    Clock, 
+    CheckCircle2, 
+    BarChart3, 
+    PieChart 
+} from "lucide-react";
 import { useTickets } from "../hooks/useTickets";
 import { useTicketTypes } from "../hooks/useTicketTypes";
 import { useProblems } from "../hooks/useProblems";
@@ -20,6 +29,13 @@ import { AddProgressModal } from "../components/modals/AddProgressModal";
 import { CloseTicketModal } from "../components/modals/CloseTicketModal";
 import { CreateTicketModal } from "../components/modals/CreateTicketModal";
 import { UpdateStatusModal } from "../components/modals/UpdateStatusModal";
+import { TicketSummary } from "../components/TicketSummary";
+import { 
+    Tabs, 
+    TabsContent, 
+    TabsList, 
+    TabsTrigger 
+} from "@/components/ui/tabs";
 import { troubleTicketApi } from "../services/ticketing.api";
 import type {
     Ticket,
@@ -51,6 +67,9 @@ const TicketingPage = () => {
     // State for selected ticket
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
+    // State for selected tab
+    const [currentTab, setCurrentTab] = useState("open");
+
     // Fetch data
     const {
         data: ticketsData,
@@ -61,6 +80,7 @@ const TicketingPage = () => {
         page,
         perPage,
         ...filters,
+        status: currentTab === "open" ? "progress,pending" : (currentTab === "closed" ? "closed" : undefined)
     });
     const { data: ticketTypesData = [] } = useTicketTypes();
     const { data: problemsData = [] } = useProblems();
@@ -269,6 +289,48 @@ const TicketingPage = () => {
         }
     };
 
+    const renderTicketList = () => (
+        <>
+            {/* Filters Section */}
+            <section className="mb-6 animate-slide-up">
+                <TicketFilters
+                    ticketTypes={ticketTypesData}
+                    pics={picsData}
+                    onFilterChange={(newFilters) => {
+                        setFilters((prev) => ({ ...prev, ...newFilters }));
+                        setPage(1);
+                    }}
+                    onApply={() => {
+                        // Filters are already applied on change
+                    }}
+                />
+            </section>
+
+            {/* Table Section */}
+            <section className="mb-6 animate-slide-up">
+                <div className="bg-card rounded-lg p-6 card-shadow">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-foreground">
+                            Tickets List
+                        </h3>
+                    </div>
+                    <TicketTable
+                        data={ticketsData?.data || []}
+                        isLoading={isLoadingTickets}
+                        pagination={ticketsData?.pagination}
+                        onView={handleViewDetail}
+                        onEdit={handleEdit}
+                        onAddProgress={handleAddProgress}
+                        onClose={handleCloseTicket}
+                        onDelete={handleDelete}
+                        onPageChange={setPage}
+                        onPerPageChange={setPerPage}
+                    />
+                </div>
+            </section>
+        </>
+    );
+
     const handleExportExcel = async () => {
         setIsExporting(true);
         try {
@@ -354,41 +416,72 @@ const TicketingPage = () => {
                 </div>
             </div>
 
-            {/* Filters Section */}
-            <section className="mb-6 animate-slide-up">
-                <TicketFilters
-                    ticketTypes={ticketTypesData}
-                    pics={picsData}
-                    onFilterChange={(newFilters) => {
-                        setFilters((prev) => ({ ...prev, ...newFilters }));
-                        setPage(1);
-                    }}
-                    onApply={() => {
-                        // Filters are already applied on change
-                    }}
-                />
-            </section>
-
-            {/* Table Section */}
-            <section className="mb-6 animate-slide-up">
-                <div className="bg-card rounded-lg p-6 card-shadow">
-                    <h3 className="text-lg font-semibold text-foreground mb-4">
-                        Tickets List
-                    </h3>
-                    <TicketTable
-                        data={ticketsData?.data || []}
-                        isLoading={isLoadingTickets}
-                        pagination={ticketsData?.pagination}
-                        onView={handleViewDetail}
-                        onEdit={handleEdit}
-                        onAddProgress={handleAddProgress}
-                        onClose={handleCloseTicket}
-                        onDelete={handleDelete}
-                        onPageChange={setPage}
-                        onPerPageChange={setPerPage}
-                    />
+            <Tabs 
+                defaultValue="open" 
+                value={currentTab}
+                onValueChange={(val) => {
+                    setCurrentTab(val);
+                    setPage(1);
+                }}
+                className="w-full"
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <TabsList className="bg-muted/50 p-1 rounded-xl">
+                        <TabsTrigger 
+                            value="open"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                <span>In Progress & Pending</span>
+                            </div>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="closed"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                <span>Closed</span>
+                            </div>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="all"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4" />
+                                <span>All Tickets</span>
+                            </div>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="summary"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <PieChart className="h-4 w-4 text-primary" />
+                                <span>Summary</span>
+                            </div>
+                        </TabsTrigger>
+                    </TabsList>
                 </div>
-            </section>
+
+                <TabsContent value="summary" className="mt-0">
+                    <TicketSummary />
+                </TabsContent>
+
+                <TabsContent value="open" className="mt-0">
+                    {renderTicketList()}
+                </TabsContent>
+
+                <TabsContent value="closed" className="mt-0">
+                    {renderTicketList()}
+                </TabsContent>
+
+                <TabsContent value="all" className="mt-0">
+                    {renderTicketList()}
+                </TabsContent>
+            </Tabs>
 
             {/* Create Ticket Modal */}
             <CreateTicketModal
