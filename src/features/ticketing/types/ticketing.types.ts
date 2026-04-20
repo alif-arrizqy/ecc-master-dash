@@ -149,6 +149,24 @@ export interface TicketFilterParams {
   picId?: number | '';
 }
 
+// Summary Types
+export interface TicketSummary {
+  byStatus: {
+    status: TicketStatus;
+    total: number;
+  }[];
+  byPic: {
+    picId: number;
+    picName: string;
+    total: number;
+  }[];
+  byProblem: {
+    problemId: number;
+    problemName: string;
+    total: number;
+  }[];
+}
+
 // Type guards and utilities
 export const isValidTicketStatus = (status: unknown): status is TicketStatus => {
   return status === 'progress' || status === 'pending' || status === 'closed';
