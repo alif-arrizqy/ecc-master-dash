@@ -895,7 +895,8 @@ export const slaApi = {
       queryParams.statusSLA = params.statusSLA;
     }
     if (params.pic && params.pic !== 'all') {
-      queryParams.pic = params.pic;
+      const picMap: Record<string, string> = { Power: 'POWER', Other: 'OTHER', VSAT: 'VSAT', SNMP: 'SNMP' };
+      queryParams.pic = picMap[params.pic] ?? params.pic;
     }
     if (params.siteName) {
       queryParams.siteName = params.siteName;
