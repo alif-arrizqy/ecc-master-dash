@@ -13,13 +13,20 @@ import {
     Plus,
     Trash2,
     Lock,
+    Settings,
     ChevronLeft,
     ChevronRight,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
 } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "./StatusBadge";
 import { SLABadge } from "./SLABadge";
 import type { Ticket } from "../types/ticketing.types";
@@ -265,78 +272,66 @@ export const TicketTable = ({
                                         <StatusBadge status={ticket.status} />
                                     </td>
                                     <td className="py-3 px-4 text-center align-middle">
-                                        <div className="flex justify-center items-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => onView(ticket)}
-                                                title="View Details"
-                                                className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                            >
-                                                <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => onEdit(ticket)}
-                                                disabled={isClosed}
-                                                title={
-                                                    isClosed
-                                                        ? "Cannot edit closed ticket"
-                                                        : "Edit"
-                                                }
-                                                className="h-8 w-8 p-0 hover:bg-primary/10 disabled:opacity-40"
-                                            >
-                                                <Edit className="h-4 w-4 text-primary" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() =>
-                                                    onAddProgress(ticket)
-                                                }
-                                                disabled={isClosed}
-                                                title={
-                                                    isClosed
-                                                        ? "Cannot add progress to closed ticket"
-                                                        : "Add Progress"
-                                                }
-                                                className="h-8 w-8 p-0 hover:bg-status-good/10 disabled:opacity-40"
-                                            >
-                                                <Plus className="h-4 w-4 text-status-good" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => onClose(ticket)}
-                                                disabled={isClosed}
-                                                title={
-                                                    isClosed
-                                                        ? "Ticket already closed"
-                                                        : "Close Ticket"
-                                                }
-                                                className={cn(
-                                                    "h-8 w-8 p-0 hover:bg-status-danger/10 disabled:opacity-40",
-                                                    "text-status-danger",
-                                                )}
-                                            >
-                                                <Lock className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => onDelete(ticket)}
-                                                disabled={isClosed}
-                                                title={
-                                                    isClosed
-                                                        ? "Cannot delete closed ticket"
-                                                        : "Delete"
-                                                }
-                                                className="h-8 w-8 p-0 hover:bg-status-danger/10 disabled:opacity-40"
-                                            >
-                                                <Trash2 className="h-4 w-4 text-status-danger" />
-                                            </Button>
-                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 gap-1.5 px-2.5"
+                                                    title="Aksi"
+                                                >
+                                                    <Settings className="h-4 w-4 shrink-0" />
+                                                    <span className="text-xs font-medium">
+                                                        Aksi
+                                                    </span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-52">
+                                                <DropdownMenuItem
+                                                    onClick={() => onView(ticket)}
+                                                >
+                                                    <Eye className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                    View Details
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    disabled={isClosed}
+                                                    onClick={() => onEdit(ticket)}
+                                                >
+                                                    <Edit className="mr-2 h-4 w-4 text-primary" />
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    disabled={isClosed}
+                                                    onClick={() =>
+                                                        onAddProgress(ticket)
+                                                    }
+                                                >
+                                                    <Plus className="mr-2 h-4 w-4 text-status-good" />
+                                                    Add Progress
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    disabled={isClosed}
+                                                    onClick={() =>
+                                                        onClose(ticket)
+                                                    }
+                                                    className="text-status-danger focus:text-status-danger"
+                                                >
+                                                    <Lock className="mr-2 h-4 w-4" />
+                                                    Close Ticket
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    disabled={isClosed}
+                                                    onClick={() =>
+                                                        onDelete(ticket)
+                                                    }
+                                                    className="text-status-danger focus:text-status-danger"
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </td>
                                 </tr>
                             );
