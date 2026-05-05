@@ -596,42 +596,42 @@ const SLADataTable = () => {
     
     // Build table HTML
     const tableHTML = `
-      <div class="table-wrapper" style="overflow-x: auto; border-radius: 6px; border: 1px solid #e5e7eb; background-color: white; padding: 16px;">
-        <table style="width: 100%; border-collapse: collapse; background-color: white;">
+      <div class="table-wrapper" style="overflow-x: auto; border-radius: 6px; border: 1px solid #e5e7eb; background-color: white; padding: 8px;">
+        <table style="width: 100%; border-collapse: collapse; background-color: white; font-size: 13px;">
           <thead>
             <tr style="border-bottom: 1px solid #e5e7eb; background-color: rgba(243, 244, 246, 0.5);">
-              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Site Name</th>
-              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Province</th>
-              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">Battery Version</th>
-              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">SLA AVG</th>
-              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">Status SP</th>
-              <th style="padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 500; color: #6b7280;">PIC</th>
-              <th style="padding: 12px 16px; text-align: left; font-size: 14px; font-weight: 500; color: #6b7280;">Problem</th>
+              <th style="padding: 5px 10px; text-align: left; font-size: 13px; font-weight: 500; color: #6b7280;">Site Name</th>
+              <th style="padding: 5px 10px; text-align: left; font-size: 13px; font-weight: 500; color: #6b7280;">Province</th>
+              <th style="padding: 5px 10px; text-align: center; font-size: 13px; font-weight: 500; color: #6b7280;">Battery Version</th>
+              <th style="padding: 5px 10px; text-align: center; font-size: 13px; font-weight: 500; color: #6b7280;">SLA AVG</th>
+              <th style="padding: 5px 10px; text-align: center; font-size: 13px; font-weight: 500; color: #6b7280;">Status SP</th>
+              <th style="padding: 5px 10px; text-align: center; font-size: 13px; font-weight: 500; color: #6b7280;">PIC</th>
+              <th style="padding: 5px 10px; text-align: left; font-size: 13px; font-weight: 500; color: #6b7280;">Problem</th>
             </tr>
           </thead>
           <tbody>
             ${sortedSites.map(site => `
               <tr style="border-bottom: 1px solid rgba(229, 231, 235, 0.5);">
-                <td style="padding: 12px 16px; font-size: 14px; font-weight: 500; text-align: left;">${site.siteName}</td>
-                <td style="padding: 12px 16px; font-size: 14px; color: #6b7280; text-align: left;">${site.province}</td>
-                <td style="padding: 12px 16px; text-align: center;">
-                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; min-height: 24px; ${
+                <td style="padding: 3px 10px; font-size: 13px; font-weight: 500; text-align: left; vertical-align: middle; line-height: 1.3;">${site.siteName}</td>
+                <td style="padding: 3px 10px; font-size: 13px; color: #6b7280; text-align: left; vertical-align: middle; line-height: 1.3;">${site.province}</td>
+                <td style="padding: 3px 10px; text-align: center; vertical-align: middle;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; min-height: 18px; ${
                     site.batteryVersion === 'Talis5 Full' ? 'background-color: #dbeafe; color: #1e40af;' :
                     site.batteryVersion === 'Talis5 Mix' ? 'background-color: #fef3c7; color: #92400e;' :
                     'background-color: #dcfce7; color: #166534;'
                   }">${site.batteryVersion}</span>
                 </td>
-                <td style="padding: 12px 16px; font-size: 14px; font-weight: 600; text-align: center; color: ${
+                <td style="padding: 3px 10px; font-size: 13px; font-weight: 600; text-align: center; vertical-align: middle; line-height: 1.3; color: ${
                   site.slaAvg >= 95.5 ? '#16a34a' : site.slaAvg >= 70 ? '#eab308' : '#dc2626'
                 };">${site.slaAvg.toFixed(2)}%</td>
-                <td style="padding: 12px 16px; text-align: center;">
-                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; min-height: 24px; ${
+                <td style="padding: 3px 10px; text-align: center; vertical-align: middle;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; min-height: 18px; ${
                     site.status === 'Potensi SP' ? 'background-color: rgba(234, 179, 8, 0.1); color: #eab308;' : 'background-color: rgba(22, 163, 74, 0.1); color: #16a34a;'
                   }">${site.status}</span>
                 </td>
-                <td style="padding: 12px 16px; text-align: center;">
+                <td style="padding: 3px 10px; text-align: center; vertical-align: middle;">
                   ${getUniquePics(site.problems).length > 0 ? 
-                    getUniquePics(site.problems).map(p => `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; min-height: 24px; margin: 2px; ${
+                    getUniquePics(site.problems).map(p => `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; min-height: 18px; margin: 1px; ${
                       p === 'VSAT' ? 'background-color: rgba(234, 179, 8, 0.1); color: #eab308;' :
                       p === 'SNMP' || p === 'POWER' ? 'background-color: rgba(59, 130, 246, 0.1); color: #2563eb;' :
                       'background-color: rgba(107, 114, 128, 0.1); color: #4b5563;'
@@ -639,7 +639,7 @@ const SLADataTable = () => {
                     '<span style="color: #6b7280;">-</span>'
                   }
                 </td>
-                <td style="padding: 12px 16px; font-size: 14px; text-align: left; color: ${site.problems && site.problems.length > 0 ? '#000' : '#6b7280'};">${formatProblemDescription(site.problems)}</td>
+                <td style="padding: 3px 10px; font-size: 13px; text-align: left; vertical-align: middle; line-height: 1.3; color: ${site.problems && site.problems.length > 0 ? '#000' : '#6b7280'};">${formatProblemDescription(site.problems)}</td>
               </tr>
             `).join('')}
           </tbody>
