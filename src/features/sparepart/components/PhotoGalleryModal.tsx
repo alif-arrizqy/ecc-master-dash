@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Image as ImageIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-} from '@/components/ui/dialog';
-import { cn } from '@/shared/lib/utils';
-import type { SparepartPhoto } from '../types/sparepart.types';
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  Image as ImageIcon,
+  ImageOff,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { cn } from "@/shared/lib/utils";
+import type { SparepartPhoto } from "../types/sparepart.types";
 
 interface PhotoGalleryModalProps {
   photos: SparepartPhoto[];
@@ -19,10 +24,17 @@ export const PhotoGalleryModal = ({
   photos,
   open,
   onOpenChange,
-  title = 'Dokumentasi Foto',
+  title = "Dokumentasi Foto",
 }: PhotoGalleryModalProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  // Reset transient state whenever the selected photo changes.
+  useEffect(() => {
+    setHasError(false);
+    setIsZoomed(false);
+  }, [selectedIndex, open]);
 
   if (photos.length === 0) {
     return null;
@@ -33,27 +45,17 @@ export const PhotoGalleryModal = ({
   const hasPrev = selectedIndex > 0;
 
   const handleNext = () => {
-    if (hasNext) {
-      setSelectedIndex(selectedIndex + 1);
-      setIsZoomed(false);
-    }
+    if (hasNext) setSelectedIndex(selectedIndex + 1);
   };
 
   const handlePrev = () => {
-    if (hasPrev) {
-      setSelectedIndex(selectedIndex - 1);
-      setIsZoomed(false);
-    }
+    if (hasPrev) setSelectedIndex(selectedIndex - 1);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowLeft' && hasPrev) {
-      handlePrev();
-    } else if (e.key === 'ArrowRight' && hasNext) {
-      handleNext();
-    } else if (e.key === 'Escape') {
-      onOpenChange(false);
-    }
+    if (e.key === "ArrowLeft" && hasPrev) handlePrev();
+    else if (e.key === "ArrowRight" && hasNext) handleNext();
+    else if (e.key === "Escape") onOpenChange(false);
   };
 
   return (
@@ -80,7 +82,8 @@ export const PhotoGalleryModal = ({
               variant="ghost"
               size="icon"
               onClick={() => setIsZoomed(!isZoomed)}
-              title={isZoomed ? 'Zoom Out' : 'Zoom In'}
+              title={isZoomed ? "Zoom Out" : "Zoom In"}
+              disabled={hasError}
             >
               {isZoomed ? (
                 <ZoomOut className="h-4 w-4" />
@@ -100,32 +103,33 @@ export const PhotoGalleryModal = ({
 
         {/* Main Photo Display */}
         <div className="relative flex-1 flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10 p-6 min-h-[400px] max-h-[60vh] overflow-auto">
-          <img
-            src={currentPhoto.url}
-            alt={currentPhoto.caption || `Foto ${selectedIndex + 1}`}
-            className={cn(
-              'max-w-full max-h-[70vh] object-contain transition-all duration-300 rounded-lg shadow-lg',
-              isZoomed && 'scale-150 cursor-zoom-out',
-              !isZoomed && 'cursor-zoom-in hover:shadow-xl'
-            )}
-            onClick={() => setIsZoomed(!isZoomed)}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              const parent = target.parentElement;
-              if (parent) {
-                parent.innerHTML = `
-                  <div class="flex flex-col items-center justify-center p-12 bg-muted/50 rounded-lg border-2 border-dashed border-muted-foreground/30">
-                    <svg class="h-16 w-16 text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p class="text-sm text-muted-foreground text-center font-medium">Gambar tidak dapat dimuat</p>
-                    <p class="text-xs text-muted-foreground/70 text-center mt-2 break-all px-4">URL: ${currentPhoto.url || 'N/A'}</p>
-                  </div>
-                `;
-              }
-            }}
-            loading="lazy"
-          />
+          {hasError ? (
+            <div className="flex flex-col items-center justify-center p-12 bg-muted/50 rounded-lg border-2 border-dashed border-muted-foreground/30">
+              <ImageOff
+                className="h-16 w-16 text-muted-foreground/50 mb-4"
+                strokeWidth={1.5}
+              />
+              <p className="text-sm text-muted-foreground text-center font-medium">
+                Gambar tidak dapat dimuat
+              </p>
+              <p className="text-xs text-muted-foreground/70 text-center mt-2 px-4">
+                Coba muat ulang halaman atau hubungi administrator.
+              </p>
+            </div>
+          ) : (
+            <img
+              src={currentPhoto.url}
+              alt={currentPhoto.caption || `Foto ${selectedIndex + 1}`}
+              className={cn(
+                "max-w-full max-h-[70vh] object-contain transition-all duration-300 rounded-lg shadow-lg",
+                isZoomed && "scale-150 cursor-zoom-out",
+                !isZoomed && "cursor-zoom-in hover:shadow-xl",
+              )}
+              onClick={() => setIsZoomed(!isZoomed)}
+              onError={() => setHasError(true)}
+              loading="lazy"
+            />
+          )}
 
           {/* Navigation Arrows */}
           {hasPrev && (
@@ -157,15 +161,12 @@ export const PhotoGalleryModal = ({
               {photos.map((photo, index) => (
                 <button
                   key={photo.id}
-                  onClick={() => {
-                    setSelectedIndex(index);
-                    setIsZoomed(false);
-                  }}
+                  onClick={() => setSelectedIndex(index)}
                   className={cn(
-                    'flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all hover:scale-105',
+                    "flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all hover:scale-105",
                     selectedIndex === index
-                      ? 'border-primary ring-2 ring-primary/30 shadow-md'
-                      : 'border-border hover:border-primary/50 opacity-70 hover:opacity-100'
+                      ? "border-primary ring-2 ring-primary/30 shadow-md"
+                      : "border-border hover:border-primary/50 opacity-70 hover:opacity-100",
                   )}
                 >
                   <img
@@ -174,7 +175,7 @@ export const PhotoGalleryModal = ({
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
+                      target.style.display = "none";
                     }}
                   />
                 </button>
