@@ -10,7 +10,15 @@ import type {
     SparepartItem,
     SparepartPhoto,
     SparepartMaster,
+    DocumentationDraft,
 } from "../types/sparepart.types";
+
+/**
+ * Backend may return documentation either as a legacy `string[]` (older
+ * records) or as the new `{ path; date? }` object form (after the schema
+ * refactor). The mapping helpers below accept both shapes transparently.
+ */
+type BackendDocumentationEntry = string | { path: string; date?: string };
 
 interface BackendStockItemNew {
     id: number;
@@ -30,7 +38,7 @@ interface BackendStockItemNew {
         item_type: string;
         stock_type: "NEW_STOCK" | "USED_STOCK";
         quantity: number;
-        documentation: string[];
+        documentation: BackendDocumentationEntry[];
         notes?: string;
     }>;
     created_at: string;
@@ -55,12 +63,70 @@ interface BackendToolsAlkerItemNew {
         item_type: string;
         quantity: number;
         condition: string;
-        documentation: string[];
+        documentation: BackendDocumentationEntry[];
         notes?: string;
     }>;
     created_at: string;
     updated_at: string;
 }
+
+/**
+ * Resolves a raw documentation entry (string or object) into the
+ * frontend-friendly { url, date? } pair, prefixing the host when the path is
+ * relative.
+ */
+const resolveDocumentationEntry = (
+    raw: BackendDocumentationEntry,
+): { url: string; date?: string } => {
+    const baseURL = import.meta.env.VITE_SPAREPART_SERVICES_URL || "";
+    const cleanBase = baseURL.replace(/\/$/, "");
+    const path = typeof raw === "string" ? raw : raw.path;
+    const date = typeof raw === "string" ? undefined : raw.date;
+
+    let fullUrl = path;
+    if (path && !/^https?:\/\//i.test(path)) {
+        fullUrl = `${cleanBase}${path.startsWith("/") ? path : `/${path}`}`;
+    }
+    return { url: fullUrl, date };
+};
+
+const formatDocumentationCaption = (date?: string): string | undefined => {
+    if (!date) return undefined;
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return date;
+    return parsed.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+};
+
+/**
+ * Normalises the diverse "delete" input shapes (single id, list of ids,
+ * or a full row) into a flat list of `sparepart_stock_item.id` /
+ * `tools_alker_item.id` values that the backend can accept directly.
+ */
+const resolveSparepartStockIds = (
+    input: number | number[] | Sparepart,
+): number[] => {
+    if (typeof input === "number") {
+        return Number.isFinite(input) ? [input] : [];
+    }
+    if (Array.isArray(input)) {
+        return input.filter((n) => Number.isFinite(n)) as number[];
+    }
+
+    const ids = new Set<number>();
+    for (const list of [input.sparepartStok, input.sparepartBekas]) {
+        if (!list) continue;
+        for (const item of list) {
+            if (typeof item.stockId === "number" && item.stockId > 0) {
+                ids.add(item.stockId);
+            }
+        }
+    }
+    return Array.from(ids);
+};
 
 // ...
 
@@ -135,15 +201,12 @@ const mapBackendToFrontendNew = (
                 if (!notesStok && s.notes) notesStok = s.notes;
 
                 s.documentation.forEach((doc, idx) => {
-                    const baseURL =
-                        import.meta.env.VITE_SPAREPART_SERVICES_URL || "";
-                    let fullUrl = doc;
-                    if (!doc.startsWith("http")) {
-                        fullUrl = `${baseURL.replace(/\/$/, "")}${doc.startsWith("/") ? doc : `/${doc}`}`;
-                    }
+                    const { url, date } = resolveDocumentationEntry(doc);
                     dokumentasiStok.push({
                         id: `${s.stock_id || s.id}-stok-${idx}`,
-                        url: fullUrl,
+                        url,
+                        documentationDate: date,
+                        caption: formatDocumentationCaption(date),
                     });
                 });
             });
@@ -169,15 +232,12 @@ const mapBackendToFrontendNew = (
                 if (!notesBekas && s.notes) notesBekas = s.notes;
 
                 s.documentation.forEach((doc, idx) => {
-                    const baseURL =
-                        import.meta.env.VITE_SPAREPART_SERVICES_URL || "";
-                    let fullUrl = doc;
-                    if (!doc.startsWith("http")) {
-                        fullUrl = `${baseURL.replace(/\/$/, "")}${doc.startsWith("/") ? doc : `/${doc}`}`;
-                    }
+                    const { url, date } = resolveDocumentationEntry(doc);
                     dokumentasiBekas.push({
                         id: `${s.stock_id || s.id}-bekas-${idx}`,
-                        url: fullUrl,
+                        url,
+                        documentationDate: date,
+                        caption: formatDocumentationCaption(date),
                     });
                 });
             });
@@ -227,15 +287,12 @@ const mapBackendToFrontendNew = (
                 if (!notes && t.notes) notes = t.notes;
 
                 (t.documentation || []).forEach((doc, idx) => {
-                    const baseURL =
-                        import.meta.env.VITE_SPAREPART_SERVICES_URL || "";
-                    let fullUrl = doc;
-                    if (!doc.startsWith("http")) {
-                        fullUrl = `${baseURL.replace(/\/$/, "")}${doc.startsWith("/") ? doc : `/${doc}`}`;
-                    }
+                    const { url, date } = resolveDocumentationEntry(doc);
                     dokumentasiStok.push({
                         id: `${t.stock_id || t.id}-tools-${idx}`,
-                        url: fullUrl,
+                        url,
+                        documentationDate: date,
+                        caption: formatDocumentationCaption(date),
                     });
                 });
             });
@@ -270,7 +327,7 @@ interface BackendStockItem {
     sparepart_id: number;
     stock_type: "NEW_STOCK" | "USED_STOCK";
     quantity: number;
-    documentation: string[];
+    documentation: BackendDocumentationEntry[];
     notes?: string;
     created_at: string;
     updated_at: string;
@@ -367,24 +424,13 @@ function mapBackendToFrontend(backendItems: BackendStockItem[]): Sparepart[] {
 
                 if (!notesStok && item.notes) notesStok = item.notes;
 
-                // Add documentation
                 item.documentation.forEach((doc, idx) => {
-                    const baseURL =
-                        import.meta.env.VITE_SPAREPART_SERVICES_URL || "";
-                    let fullUrl = doc;
-                    if (
-                        !doc.startsWith("http://") &&
-                        !doc.startsWith("https://")
-                    ) {
-                        const cleanBaseURL = baseURL.replace(/\/$/, "");
-                        const cleanImagePath = doc.startsWith("/")
-                            ? doc
-                            : `/${doc}`;
-                        fullUrl = `${cleanBaseURL}${cleanImagePath}`;
-                    }
+                    const { url, date } = resolveDocumentationEntry(doc);
                     dokumentasiStok.push({
                         id: `${item.id}-stok-${idx}`,
-                        url: fullUrl,
+                        url,
+                        documentationDate: date,
+                        caption: formatDocumentationCaption(date),
                     });
                 });
             } else {
@@ -392,24 +438,13 @@ function mapBackendToFrontend(backendItems: BackendStockItem[]): Sparepart[] {
 
                 if (!notesBekas && item.notes) notesBekas = item.notes;
 
-                // Add documentation
                 item.documentation.forEach((doc, idx) => {
-                    const baseURL =
-                        import.meta.env.VITE_SPAREPART_SERVICES_URL || "";
-                    let fullUrl = doc;
-                    if (
-                        !doc.startsWith("http://") &&
-                        !doc.startsWith("https://")
-                    ) {
-                        const cleanBaseURL = baseURL.replace(/\/$/, "");
-                        const cleanImagePath = doc.startsWith("/")
-                            ? doc
-                            : `/${doc}`;
-                        fullUrl = `${cleanBaseURL}${cleanImagePath}`;
-                    }
+                    const { url, date } = resolveDocumentationEntry(doc);
                     dokumentasiBekas.push({
                         id: `${item.id}-bekas-${idx}`,
-                        url: fullUrl,
+                        url,
+                        documentationDate: date,
+                        caption: formatDocumentationCaption(date),
                     });
                 });
             }
@@ -735,70 +770,103 @@ export const sparepartApi = {
     },
 
     /**
-     * Create new sparepart stock
+     * Create new sparepart stock items.
+     *
+     * Photos in the new schema live on a single stock row (one stock item per
+     * sparepart in the location group). To avoid the historical bug where the
+     * same bucket of files was attached to every created row, photos are only
+     * attached to the FIRST item of each stock type, then any remaining drafts
+     * are uploaded via the `addSparepartPhotos` endpoint to that same row.
+     *
      * POST /api/v1/sparepart/stock
-     * Backend expects: location_id, sparepart_id, stock_type (NEW_STOCK/USED_STOCK), quantity, notes, photos[]
      */
     createSparepartStock: async (data: SparepartFormData) => {
         if (!data.location_id) {
             throw new Error("Location ID is required");
         }
 
-        const itemsToCreate = [
-            ...(data.sparepartStok || []),
-            ...(data.sparepartBekas || []),
-        ];
+        const stokItems = data.sparepartStok || [];
+        const bekasItems = data.sparepartBekas || [];
+        const itemsToCreate = [...stokItems, ...bekasItems];
 
         if (itemsToCreate.length === 0) {
             throw new Error("No sparepart items to create.");
         }
 
-        const results = await Promise.all(
-            itemsToCreate.map(async (item) => {
-                const formData = new FormData();
-                formData.append("location_id", String(data.location_id));
-                formData.append("sparepart_id", String(item.id)); // Master ID
-                formData.append(
-                    "stock_type",
-                    item.stock_type === "NEW_STOCK"
-                        ? "NEW_STOCK"
-                        : "USED_STOCK",
-                );
-                formData.append("quantity", String(item.quantity || 0));
-
-                if (data.catatan) formData.append("notes", data.catatan);
-
-                // Append photos based on stock type
-                const photosForItem =
-                    item.stock_type === "NEW_STOCK"
-                        ? data.dokumentasiStok || []
-                        : data.dokumentasiBekas || [];
-                photosForItem.forEach((file) => {
-                    formData.append("photos", file);
-                });
-
-                return sparepartApiClient.post<ApiResponse<BackendStockItem>>(
-                    "/api/v1/sparepart/stock",
-                    formData,
-                    {
-                        headers: {
-                            "Content-Type": "multipart/form-data",
-                        },
-                    },
-                );
-            }),
+        const stokDrafts = (data.dokumentasiStok || []).filter((d) => !!d.file);
+        const bekasDrafts = (data.dokumentasiBekas || []).filter(
+            (d) => !!d.file,
         );
 
-        // Return the mapped first item from the results, or handle multiple if needed
-        // For simplicity, we'll map all created items and return the first grouped result.
-        const mappedData = mapBackendToFrontend(
-            results.map((res) => res.data.data),
-        );
-        return mappedData[0];
+        // We create items sequentially so we can identify the stockId of the
+        // first NEW_STOCK / USED_STOCK row and then add the remaining photos
+        // to that row.
+        const results: ApiResponse<any>[] = [];
+        let firstNewStockId: number | null = null;
+        let firstUsedStockId: number | null = null;
+
+        for (const item of itemsToCreate) {
+            const formData = new FormData();
+            formData.append("location_id", String(data.location_id));
+            formData.append("sparepart_id", String(item.id));
+            formData.append(
+                "stock_type",
+                item.stock_type === "USED_STOCK" ? "USED_STOCK" : "NEW_STOCK",
+            );
+            formData.append("quantity", String(item.quantity || 0));
+            if (data.catatan) formData.append("notes", data.catatan);
+
+            const response = await sparepartApiClient.post<ApiResponse<any>>(
+                "/api/v1/sparepart/stock",
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } },
+            );
+            results.push(response.data);
+
+            // Walk the grouped response to grab the freshly minted stockId.
+            const grouped = response.data?.data as any;
+            if (grouped && Array.isArray(grouped.sparepart)) {
+                for (const sp of grouped.sparepart) {
+                    if (
+                        sp.stock_type === "NEW_STOCK" &&
+                        firstNewStockId == null &&
+                        sp.stock_id
+                    ) {
+                        firstNewStockId = sp.stock_id;
+                    }
+                    if (
+                        sp.stock_type === "USED_STOCK" &&
+                        firstUsedStockId == null &&
+                        sp.stock_id
+                    ) {
+                        firstUsedStockId = sp.stock_id;
+                    }
+                }
+            }
+        }
+
+        // Now upload the documentation drafts to whichever row is appropriate.
+        if (stokDrafts.length > 0 && firstNewStockId != null) {
+            await sparepartApi.addSparepartPhotos(firstNewStockId, stokDrafts);
+        }
+        if (bekasDrafts.length > 0 && firstUsedStockId != null) {
+            await sparepartApi.addSparepartPhotos(
+                firstUsedStockId,
+                bekasDrafts,
+            );
+        }
+
+        return null;
     },
 
     /**
-     * Create new tools alker
+     * Create new tools alker.
+     *
+     * Photos are attached to the FIRST created tools row only; any remaining
+     * documentation drafts are uploaded via `addToolsAlkerPhotos` (when that
+     * endpoint is available on the backend) so they don't get duplicated
+     * across rows.
+     *
      * POST /api/v1/sparepart/tools-alker
      */
     createToolsAlker: async (data: SparepartFormData) => {
@@ -807,47 +875,59 @@ export const sparepartApi = {
             throw new Error("No tools alker items to create.");
         }
 
-        const results = await Promise.all(
-            itemsToCreate.map(async (item) => {
-                const formData = new FormData();
-                formData.append("regency", data.kabupaten);
-                formData.append("cluster", data.cluster);
-                formData.append("region", data.region);
-                formData.append("sparepart_id", String(item.id)); // Master ID
-                formData.append("quantity", String(item.quantity || 0));
+        const drafts = (data.dokumentasiStok || []).filter((d) => !!d.file);
+        let firstStockId: number | null = null;
 
-                if (data.catatan) formData.append("notes", data.catatan);
-                if (data.pic) formData.append("pic", data.pic);
-                if (data.kontak) formData.append("contact", data.kontak);
+        for (const item of itemsToCreate) {
+            const formData = new FormData();
+            formData.append("regency", data.kabupaten);
+            formData.append("cluster", data.cluster);
+            formData.append("region", data.region);
+            formData.append("sparepart_id", String(item.id));
+            formData.append("quantity", String(item.quantity || 0));
+            if (data.catatan) formData.append("notes", data.catatan);
+            if (data.pic) formData.append("pic", data.pic);
+            if (data.kontak) formData.append("contact", data.kontak);
 
-                if (data.dokumentasiStok) {
-                    data.dokumentasiStok.forEach((file) => {
-                        formData.append(`photos`, file);
-                    });
-                }
+            const response = await sparepartApiClient.post<ApiResponse<any>>(
+                "/api/v1/sparepart/tools-alker",
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } },
+            );
 
-                return sparepartApiClient.post<ApiResponse<Sparepart>>(
-                    "/api/v1/sparepart/tools-alker",
-                    formData,
-                    {
-                        headers: {
-                            "Content-Type": "multipart/form-data",
-                        },
-                    },
+            const grouped = response.data?.data as any;
+            if (
+                firstStockId == null &&
+                grouped &&
+                Array.isArray(grouped.tools)
+            ) {
+                const target = grouped.tools.find(
+                    (t: any) => t.stock_id || t.id,
                 );
-            }),
-        );
+                if (target) firstStockId = target.stock_id || target.id;
+            }
+        }
 
-        // Return the mapped first item from the results
-        const mappedData = mapBackendToFrontendNew(
-            results.map((res) => res.data.data as BackendToolsAlkerItemNew),
-            "tools-alker",
-        );
-        return mappedData[0];
+        if (drafts.length > 0 && firstStockId != null) {
+            await sparepartApi.addToolsAlkerPhotos(firstStockId, drafts);
+        }
+        return null;
     },
 
     /**
-     * Update sparepart stock
+     * Update an existing sparepart stock location group.
+     *
+     * Splits the work in three:
+     *   1. Existing rows (have stockId) -> PUT quantity/notes.
+     *   2. Brand new rows (no stockId)  -> POST /stock without photos so the
+     *      backend can return the new stock_id; collect the new stockIds for
+     *      NEW_STOCK/USED_STOCK.
+     *   3. Documentation drafts          -> sent ONCE through
+     *      `addSparepartPhotos` to the first available stockId of the matching
+     *      type (existing or newly created). This eliminates the previous bug
+     *      where photos were uploaded twice (during POST and again via
+     *      addSparepartPhotos).
+     *
      * PUT /api/v1/sparepart/stock/{id}
      */
     updateSparepartStock: async (id: number, data: SparepartFormData) => {
@@ -855,109 +935,120 @@ export const sparepartApi = {
             ...(data.sparepartStok || []),
             ...(data.sparepartBekas || []),
         ];
-        const promises: Promise<any>[] = [];
+
+        let firstNewStockTargetId =
+            data.sparepartStok?.find((i) => i.stockId)?.stockId || null;
+        let firstUsedStockTargetId =
+            data.sparepartBekas?.find((i) => i.stockId)?.stockId || null;
 
         for (const item of items) {
             if (item.stockId) {
-                // Update existing item
-                const payload = {
-                    quantity: Number(item.quantity),
-                    notes: data.catatan || undefined,
-                };
-                promises.push(
-                    sparepartApiClient.put(
-                        `/api/v1/sparepart/stock/${item.stockId}`,
-                        payload,
-                    ),
+                await sparepartApiClient.put(
+                    `/api/v1/sparepart/stock/${item.stockId}`,
+                    {
+                        quantity: Number(item.quantity),
+                        notes: data.catatan || undefined,
+                    },
                 );
-            } else {
-                // Create new item within this location group
-                const formData = new FormData();
-                formData.append("location_id", String(id)); // Use the main ID as location_id for new items
-                formData.append("sparepart_id", String(item.id)); // Master ID
-                formData.append(
-                    "stock_type",
-                    item.stock_type === "NEW_STOCK"
-                        ? "NEW_STOCK"
-                        : "USED_STOCK",
-                );
-                formData.append("quantity", String(item.quantity || 0));
-                if (data.catatan) formData.append("notes", data.catatan);
+                continue;
+            }
 
-                // Photos for newly created items
-                const photosForItem =
-                    item.stock_type === "NEW_STOCK"
-                        ? data.dokumentasiStok || []
-                        : data.dokumentasiBekas || [];
-                photosForItem.forEach((file) => {
-                    formData.append("photos", file);
-                });
+            const formData = new FormData();
+            formData.append("location_id", String(id));
+            formData.append("sparepart_id", String(item.id));
+            formData.append(
+                "stock_type",
+                item.stock_type === "USED_STOCK" ? "USED_STOCK" : "NEW_STOCK",
+            );
+            formData.append("quantity", String(item.quantity || 0));
+            if (data.catatan) formData.append("notes", data.catatan);
 
-                promises.push(
-                    sparepartApiClient.post(
-                        "/api/v1/sparepart/stock",
-                        formData,
-                        {
-                            headers: {
-                                "Content-Type": "multipart/form-data",
-                            },
-                        },
-                    ),
-                );
+            const response = await sparepartApiClient.post<ApiResponse<any>>(
+                "/api/v1/sparepart/stock",
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } },
+            );
+
+            const grouped = response.data?.data as any;
+            if (grouped && Array.isArray(grouped.sparepart)) {
+                for (const sp of grouped.sparepart) {
+                    if (
+                        sp.stock_type === "NEW_STOCK" &&
+                        firstNewStockTargetId == null &&
+                        sp.stock_id
+                    ) {
+                        firstNewStockTargetId = sp.stock_id;
+                    }
+                    if (
+                        sp.stock_type === "USED_STOCK" &&
+                        firstUsedStockTargetId == null &&
+                        sp.stock_id
+                    ) {
+                        firstUsedStockTargetId = sp.stock_id;
+                    }
+                }
             }
         }
 
-        // Handle adding new photos to existing stock items
-        // We need a stockId to add photos. We'll use the first available stockId of the respective type.
-        if (data.dokumentasiStok && data.dokumentasiStok.length > 0) {
-            const targetStockId = items.find(
-                (i) => i.stockId && i.stock_type === "NEW_STOCK",
-            )?.stockId;
-            if (targetStockId) {
-                promises.push(
-                    sparepartApi.addSparepartPhotos(
-                        targetStockId,
-                        data.dokumentasiStok,
-                    ),
-                );
-            }
+        const stokDrafts = (data.dokumentasiStok || []).filter((d) => !!d.file);
+        const bekasDrafts = (data.dokumentasiBekas || []).filter(
+            (d) => !!d.file,
+        );
+        if (stokDrafts.length > 0 && firstNewStockTargetId != null) {
+            await sparepartApi.addSparepartPhotos(
+                firstNewStockTargetId,
+                stokDrafts,
+            );
         }
-        if (data.dokumentasiBekas && data.dokumentasiBekas.length > 0) {
-            const targetStockId = items.find(
-                (i) => i.stockId && i.stock_type === "USED_STOCK",
-            )?.stockId;
-            if (targetStockId) {
-                promises.push(
-                    sparepartApi.addSparepartPhotos(
-                        targetStockId,
-                        data.dokumentasiBekas,
-                    ),
-                );
-            }
+        if (bekasDrafts.length > 0 && firstUsedStockTargetId != null) {
+            await sparepartApi.addSparepartPhotos(
+                firstUsedStockTargetId,
+                bekasDrafts,
+            );
         }
 
-        await Promise.all(promises);
-        return true; // Simplified return
+        return true;
     },
 
     /**
-     * Add photos to sparepart stock
+     * Add photos to a sparepart stock row.
+     *
+     * Accepts either `File[]` (legacy callers) or `DocumentationDraft[]`
+     * (current form). For each draft, the optional `date` is forwarded to the
+     * backend via `documentation_dates` (JSON array string), aligned by index
+     * with the `photos` files.
+     *
      * POST /api/v1/sparepart/stock/{id}/photos
      */
-    addSparepartPhotos: async (id: number, photos: File[]) => {
+    addSparepartPhotos: async (
+        id: number,
+        photos: File[] | DocumentationDraft[],
+    ) => {
+        const drafts: DocumentationDraft[] = photos
+            .map((p, idx): DocumentationDraft | null => {
+                if (p instanceof File) {
+                    return { id: `${idx}-${p.name}`, file: p };
+                }
+                if (p && p.file) return p;
+                return null;
+            })
+            .filter((d): d is DocumentationDraft => d !== null);
+
+        if (drafts.length === 0) return null;
+
         const formData = new FormData();
-        photos.forEach((file) => {
-            formData.append("photos", file);
+        drafts.forEach((d) => {
+            if (d.file) formData.append("photos", d.file);
         });
+        formData.append(
+            "documentation_dates",
+            JSON.stringify(drafts.map((d) => d.date || "")),
+        );
 
         const response = await sparepartApiClient.post(
             `/api/v1/sparepart/stock/${id}/photos`,
             formData,
-            {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            },
+            { headers: { "Content-Type": "multipart/form-data" } },
         );
         return response.data;
     },
@@ -974,94 +1065,100 @@ export const sparepartApi = {
     },
 
     /**
-     * Update tools alker
+     * Update tools alker.
+     *
+     * Mirrors `updateSparepartStock`: existing rows are PUTed without photos,
+     * new rows are POSTed without photos so we can collect the new stock_id,
+     * and finally documentation drafts are uploaded ONCE.
+     *
      * PUT /api/v1/sparepart/tools-alker/{id}
      */
     updateToolsAlker: async (id: number, data: SparepartFormData) => {
         const items = data.sparepartStok || [];
-        const promises: Promise<any>[] = [];
+        let firstStockId: number | null =
+            items.find((i) => i.stockId)?.stockId || null;
 
         for (const item of items) {
             if (item.stockId) {
-                // Update existing item
-                const payload = {
-                    quantity: Number(item.quantity),
-                    notes: data.catatan || undefined,
-                };
-                promises.push(
-                    sparepartApiClient.put(
-                        `/api/v1/sparepart/tools-alker/${item.stockId}`,
-                        payload,
-                    ),
+                await sparepartApiClient.put(
+                    `/api/v1/sparepart/tools-alker/${item.stockId}`,
+                    {
+                        quantity: Number(item.quantity),
+                        notes: data.catatan || undefined,
+                    },
                 );
-            } else {
-                // Create new item within this location group
-                const formData = new FormData();
-                formData.append("regency", data.kabupaten);
-                formData.append("cluster", data.cluster);
-                formData.append("region", data.region);
-                formData.append("sparepart_id", String(item.id)); // Master ID
-                formData.append("quantity", String(item.quantity || 0));
-                if (data.catatan) formData.append("notes", data.catatan);
-                if (data.pic) formData.append("pic", data.pic);
-                if (data.kontak) formData.append("contact", data.kontak);
+                continue;
+            }
 
-                // Photos for newly created items
-                if (data.dokumentasiStok) {
-                    data.dokumentasiStok.forEach((file) => {
-                        formData.append(`photos`, file);
-                    });
-                }
+            const formData = new FormData();
+            formData.append("regency", data.kabupaten);
+            formData.append("cluster", data.cluster);
+            formData.append("region", data.region);
+            formData.append("sparepart_id", String(item.id));
+            formData.append("quantity", String(item.quantity || 0));
+            if (data.catatan) formData.append("notes", data.catatan);
+            if (data.pic) formData.append("pic", data.pic);
+            if (data.kontak) formData.append("contact", data.kontak);
 
-                promises.push(
-                    sparepartApiClient.post(
-                        "/api/v1/sparepart/tools-alker",
-                        formData,
-                        {
-                            headers: {
-                                "Content-Type": "multipart/form-data",
-                            },
-                        },
-                    ),
+            const response = await sparepartApiClient.post<ApiResponse<any>>(
+                "/api/v1/sparepart/tools-alker",
+                formData,
+                { headers: { "Content-Type": "multipart/form-data" } },
+            );
+
+            const grouped = response.data?.data as any;
+            if (
+                firstStockId == null &&
+                grouped &&
+                Array.isArray(grouped.tools)
+            ) {
+                const target = grouped.tools.find(
+                    (t: any) => t.stock_id || t.id,
                 );
+                if (target) firstStockId = target.stock_id || target.id;
             }
         }
 
-        // Handle adding new photos to existing tools alker items
-        if (data.dokumentasiStok && data.dokumentasiStok.length > 0) {
-            const targetStockId = items.find((i) => i.stockId)?.stockId;
-            if (targetStockId) {
-                promises.push(
-                    sparepartApi.addToolsAlkerPhotos(
-                        targetStockId,
-                        data.dokumentasiStok,
-                    ),
-                );
-            }
+        const drafts = (data.dokumentasiStok || []).filter((d) => !!d.file);
+        if (drafts.length > 0 && firstStockId != null) {
+            await sparepartApi.addToolsAlkerPhotos(firstStockId, drafts);
         }
-
-        await Promise.all(promises);
         return true;
     },
 
     /**
-     * Add photos to tools alker
+     * Add photos to tools alker (mirrors `addSparepartPhotos` semantics).
      * POST /api/v1/sparepart/tools-alker/{id}/photos
      */
-    addToolsAlkerPhotos: async (id: number, photos: File[]) => {
+    addToolsAlkerPhotos: async (
+        id: number,
+        photos: File[] | DocumentationDraft[],
+    ) => {
+        const drafts: DocumentationDraft[] = photos
+            .map((p, idx): DocumentationDraft | null => {
+                if (p instanceof File) {
+                    return { id: `${idx}-${p.name}`, file: p };
+                }
+                if (p && p.file) return p;
+                return null;
+            })
+            .filter((d): d is DocumentationDraft => d !== null);
+
+        if (drafts.length === 0) return null;
+
         const formData = new FormData();
-        photos.forEach((file) => {
-            formData.append("photos", file);
+        drafts.forEach((d) => {
+            if (d.file) formData.append("photos", d.file);
         });
+        formData.append(
+            "documentation_dates",
+            JSON.stringify(drafts.map((d) => d.date || "")),
+        );
 
         const response = await sparepartApiClient.post(
             `/api/v1/sparepart/tools-alker/${id}/photos`,
             formData,
-            {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            },
+            { headers: { "Content-Type": "multipart/form-data" } },
         );
         return response.data;
     },
@@ -1078,25 +1175,52 @@ export const sparepartApi = {
     },
 
     /**
-     * Delete sparepart stock
-     * DELETE /api/v1/sparepart/stock/{id}
+     * Delete a sparepart stock location group.
+     *
+     * Frontend rows use `location_id` as their synthetic `id` so the same row
+     * can host both NEW_STOCK and USED_STOCK items. The backend endpoint, by
+     * contrast, expects the primary key of `sparepart_stock_item`. To bridge
+     * the two we expand the row into all of its underlying stock_ids and
+     * delete each one. The caller can pass either:
+     *   - a full `Sparepart` row (preferred — we use its `sparepart*` items), or
+     *   - a list of stockIds, or
+     *   - a single stockId (legacy callers).
+     *
+     * DELETE /api/v1/sparepart/stock/{stock_id}
      */
-    deleteSparepartStock: async (id: number) => {
-        const response = await sparepartApiClient.delete(
-            `/api/v1/sparepart/stock/${id}`,
+    deleteSparepartStock: async (input: number | number[] | Sparepart) => {
+        const stockIds = resolveSparepartStockIds(input);
+        if (stockIds.length === 0) {
+            throw new Error("No sparepart stock items to delete");
+        }
+        await Promise.all(
+            stockIds.map((id) =>
+                sparepartApiClient.delete(`/api/v1/sparepart/stock/${id}`),
+            ),
         );
-        return response.data;
+        return true;
     },
 
     /**
-     * Delete tools alker
-     * DELETE /api/v1/sparepart/tools-alker/{id}
+     * Delete a tools alker location group. Same expansion logic as
+     * `deleteSparepartStock`: the synthetic row id is a `location_id`, while
+     * the backend expects each `tools_alker_item.id`.
+     *
+     * DELETE /api/v1/sparepart/tools-alker/{stock_id}
      */
-    deleteToolsAlker: async (id: number) => {
-        const response = await sparepartApiClient.delete(
-            `/api/v1/sparepart/tools-alker/${id}`,
+    deleteToolsAlker: async (input: number | number[] | Sparepart) => {
+        const stockIds = resolveSparepartStockIds(input);
+        if (stockIds.length === 0) {
+            throw new Error("No tools alker items to delete");
+        }
+        await Promise.all(
+            stockIds.map((id) =>
+                sparepartApiClient.delete(
+                    `/api/v1/sparepart/tools-alker/${id}`,
+                ),
+            ),
         );
-        return response.data;
+        return true;
     },
 
     /**

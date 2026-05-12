@@ -52,6 +52,28 @@ const ITEMS_PER_PAGE = 10;
 const SparepartPage = () => {
     const queryClient = useQueryClient();
 
+    // Force-refresh semua list sparepart (Maluku/Papua/Tools Alker).
+    // - `refetchType: "all"` memastikan query yang sementara inactive
+    //   (mis. saat dialog terbuka) tetap di-refetch.
+    // - `await` agar UI-state berikutnya (close dialog, reset form) hanya
+    //   dilakukan setelah cache benar-benar di-invalidate.
+    const refreshSparepartLists = async () => {
+        await Promise.all([
+            queryClient.invalidateQueries({
+                queryKey: ["sparepart", "maluku"],
+                refetchType: "all",
+            }),
+            queryClient.invalidateQueries({
+                queryKey: ["sparepart", "papua"],
+                refetchType: "all",
+            }),
+            queryClient.invalidateQueries({
+                queryKey: ["sparepart", "tools_alker"],
+                refetchType: "all",
+            }),
+        ]);
+    };
+
     // State untuk 3 section
     const [malukuPage, setMalukuPage] = useState(1);
     const [papuaPage, setPapuaPage] = useState(1);
@@ -176,9 +198,9 @@ const SparepartPage = () => {
             }
             return sparepartApi.createSparepartStock(data);
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+            await refreshSparepartLists();
             toast.success("Data sparepart berhasil ditambahkan");
-            queryClient.invalidateQueries({ queryKey: ["sparepart"] });
             setFormOpen(false);
             resetForm();
         },
@@ -206,9 +228,9 @@ const SparepartPage = () => {
             }
             return sparepartApi.updateSparepartStock(id, data);
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+            await refreshSparepartLists();
             toast.success("Data sparepart berhasil diupdate");
-            queryClient.invalidateQueries({ queryKey: ["sparepart"] });
             setFormOpen(false);
             resetForm();
         },
@@ -220,23 +242,25 @@ const SparepartPage = () => {
         },
     });
 
-    // Delete mutation
+    // Delete mutation — passes the full Sparepart row so the API helper can
+    // expand it into the underlying stock_ids (frontend row.id is location_id,
+    // not the PK of sparepart_stock_item).
     const deleteMutation = useMutation({
         mutationFn: ({
-            id,
+            item,
             apiType,
         }: {
-            id: number;
+            item: Sparepart;
             apiType: "stock" | "tools-alker";
         }) => {
             if (apiType === "tools-alker") {
-                return sparepartApi.deleteToolsAlker(id);
+                return sparepartApi.deleteToolsAlker(item);
             }
-            return sparepartApi.deleteSparepartStock(id);
+            return sparepartApi.deleteSparepartStock(item);
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+            await refreshSparepartLists();
             toast.success("Data sparepart berhasil dihapus");
-            queryClient.invalidateQueries({ queryKey: ["sparepart"] });
             setDeleteDialogOpen(false);
             setSelectedItem(null);
         },
@@ -859,7 +883,7 @@ const SparepartPage = () => {
                                             ? "tools-alker"
                                             : "stock";
                                     deleteMutation.mutate({
-                                        id: selectedItem.id,
+                                        item: selectedItem,
                                         apiType,
                                     });
                                 }
