@@ -18,6 +18,15 @@ export interface SparepartPhoto {
     url: string;
     thumbnailUrl?: string;
     caption?: string;
+    documentationDate?: string; // optional ISO date (YYYY-MM-DD)
+}
+
+// Draft entry used by the "Tambah Dokumentasi" UI inside the form. The user
+// picks a file and (optionally) a date for that file before submitting.
+export interface DocumentationDraft {
+    id: string;
+    file?: File;
+    date?: string; // ISO date (YYYY-MM-DD), optional
 }
 
 export interface Sparepart {
@@ -70,9 +79,9 @@ export interface SparepartFormData {
     // 'bekas' -> stock_type: 'USED_STOCK', item_type: 'SPAREPART'
     // 'tools_alker' -> item_type: 'TOOLS_ALKER'
     sparepartStok?: SparepartItem[]; // Array of {sparepart_id, quantity}
-    dokumentasiStok?: File[];
+    dokumentasiStok?: DocumentationDraft[];
     sparepartBekas?: SparepartItem[]; // Array of {sparepart_id, quantity}
-    dokumentasiBekas?: File[];
+    dokumentasiBekas?: DocumentationDraft[];
     catatan?: string;
     pic?: string;
     kontak?: string;

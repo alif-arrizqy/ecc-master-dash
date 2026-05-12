@@ -28,11 +28,12 @@ import {
 import {
     Plus,
     X,
-    Upload,
     Trash2,
     ChevronsUpDown,
     Check,
     Image as ImageIcon,
+    Calendar as CalendarIcon,
+    Camera,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { sparepartApi } from "../services/sparepart.api";
@@ -54,7 +55,14 @@ import type {
     ContactPerson,
     SparepartMaster,
     SparepartPhoto,
+    DocumentationDraft,
 } from "../types/sparepart.types";
+
+// Stable id helper for new documentation rows. Date.now() can collide when
+// the user mashes the "Tambah Foto" button quickly; combining it with a
+// random suffix keeps each row uniquely identifiable for React's reconciler.
+const makeDraftId = () =>
+    `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 interface SparepartFormProps {
     formData: SparepartFormData;
@@ -85,10 +93,10 @@ export const SparepartForm = ({
     const [bekasItems, setBekasItems] = useState<SparepartItem[]>(
         formData.sparepartBekas || [],
     );
-    const [stokPhotos, setStokPhotos] = useState<File[]>(
+    const [stokDocs, setStokDocs] = useState<DocumentationDraft[]>(
         formData.dokumentasiStok || [],
     );
-    const [bekasPhotos, setBekasPhotos] = useState<File[]>(
+    const [bekasDocs, setBekasDocs] = useState<DocumentationDraft[]>(
         formData.dokumentasiBekas || [],
     );
 
@@ -348,7 +356,7 @@ export const SparepartForm = ({
             setStokItems(formData.sparepartStok || []);
         }
         isInternalUpdateRef.current = false;
-        setBekasPhotos(formData.dokumentasiBekas || []);
+        setBekasDocs(formData.dokumentasiBekas || []);
     }, [formData.sparepartStok, formData.dokumentasiBekas]);
 
     useEffect(() => {
@@ -356,7 +364,7 @@ export const SparepartForm = ({
             setBekasItems(formData.sparepartBekas || []);
         }
         isInternalUpdateRef.current = false;
-        setStokPhotos(formData.dokumentasiStok || []);
+        setStokDocs(formData.dokumentasiStok || []);
     }, [formData.sparepartBekas, formData.dokumentasiStok]);
 
     const handleAddSparepartItem = (type: "stok" | "bekas") => {
@@ -413,32 +421,67 @@ export const SparepartForm = ({
         }
     };
 
-    const handlePhotoChange = (
-        type: "stok" | "bekas",
-        files: FileList | null,
-    ) => {
-        if (!files) return;
-
-        const fileArray = Array.from(files);
+    // Documentation rows — one row per photo, similar to the "Tambah Item"
+    // pattern used by the sparepart list above. Each row exposes a file input
+    // and an optional date field.
+    const handleAddDocRow = (type: "stok" | "bekas") => {
+        const newRow: DocumentationDraft = { id: makeDraftId() };
         if (type === "stok") {
-            const updated = [...stokPhotos, ...fileArray];
-            setStokPhotos(updated);
+            const updated = [...stokDocs, newRow];
+            setStokDocs(updated);
             onChange({ ...formData, dokumentasiStok: updated });
         } else {
-            const updated = [...bekasPhotos, ...fileArray];
-            setBekasPhotos(updated);
+            const updated = [...bekasDocs, newRow];
+            setBekasDocs(updated);
             onChange({ ...formData, dokumentasiBekas: updated });
         }
     };
 
-    const handleRemovePhoto = (type: "stok" | "bekas", index: number) => {
+    const handleRemoveDocRow = (type: "stok" | "bekas", index: number) => {
         if (type === "stok") {
-            const updated = stokPhotos.filter((_, i) => i !== index);
-            setStokPhotos(updated);
+            const updated = stokDocs.filter((_, i) => i !== index);
+            setStokDocs(updated);
             onChange({ ...formData, dokumentasiStok: updated });
         } else {
-            const updated = bekasPhotos.filter((_, i) => i !== index);
-            setBekasPhotos(updated);
+            const updated = bekasDocs.filter((_, i) => i !== index);
+            setBekasDocs(updated);
+            onChange({ ...formData, dokumentasiBekas: updated });
+        }
+    };
+
+    const handleDocFileChange = (
+        type: "stok" | "bekas",
+        index: number,
+        file: File | undefined,
+    ) => {
+        const list = type === "stok" ? stokDocs : bekasDocs;
+        const updated = [...list];
+        updated[index] = { ...updated[index], file };
+        if (type === "stok") {
+            setStokDocs(updated);
+            onChange({ ...formData, dokumentasiStok: updated });
+        } else {
+            setBekasDocs(updated);
+            onChange({ ...formData, dokumentasiBekas: updated });
+        }
+    };
+
+    const handleDocDateChange = (
+        type: "stok" | "bekas",
+        index: number,
+        date: string,
+    ) => {
+        const list = type === "stok" ? stokDocs : bekasDocs;
+        const updated = [...list];
+        updated[index] = {
+            ...updated[index],
+            date: date.trim() === "" ? undefined : date,
+        };
+        if (type === "stok") {
+            setStokDocs(updated);
+            onChange({ ...formData, dokumentasiStok: updated });
+        } else {
+            setBekasDocs(updated);
             onChange({ ...formData, dokumentasiBekas: updated });
         }
     };
@@ -1229,23 +1272,131 @@ export const SparepartForm = ({
                     </div>
 
                     {/* Dokumentasi Stok */}
-                    <div className="space-y-2">
-                        <Label>
-                            Dokumentasi{" "}
-                            {formData.type === "tools_alker" ? "Tools" : "Stok"}{" "}
-                            (Foto)
-                        </Label>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) =>
-                                    handlePhotoChange("stok", e.target.files)
-                                }
-                                className="flex-1"
-                            />
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-base font-semibold">
+                                Dokumentasi{" "}
+                                {formData.type === "tools_alker"
+                                    ? "Tools"
+                                    : "Stok"}{" "}
+                                (Foto)
+                            </Label>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddDocRow("stok")}
+                            >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Tambah Foto
+                            </Button>
                         </div>
+
+                        {/* Empty state */}
+                        {stokDocs.length === 0 && (
+                            <div className="flex flex-col items-center justify-center text-center border border-dashed rounded-lg py-8 text-muted-foreground">
+                                <Camera className="h-8 w-8 mb-2 opacity-60" />
+                                <p className="text-sm">
+                                    Belum ada foto dokumentasi
+                                </p>
+                                <p className="text-xs opacity-70">
+                                    Klik <span className="font-medium">
+                                        Tambah Foto
+                                    </span>{" "}
+                                    untuk mengunggah satu per satu
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Documentation rows */}
+                        {stokDocs.length > 0 && (
+                            <div className="space-y-2">
+                                {stokDocs.map((doc, index) => (
+                                    <div
+                                        key={doc.id || index}
+                                        className="flex items-center gap-3 border rounded-lg p-2 bg-muted/20"
+                                    >
+                                        {/* Preview */}
+                                        <div className="h-16 w-16 rounded-md overflow-hidden border bg-background flex-shrink-0 flex items-center justify-center">
+                                            {doc.file ? (
+                                                <img
+                                                    src={URL.createObjectURL(
+                                                        doc.file,
+                                                    )}
+                                                    alt={`Foto ${index + 1}`}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <Camera className="h-6 w-6 text-muted-foreground/60" />
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_180px] gap-2">
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor={`stok-file-${index}`}
+                                                    className="text-xs text-muted-foreground"
+                                                >
+                                                    Foto {index + 1}
+                                                </Label>
+                                                <Input
+                                                    id={`stok-file-${index}`}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) =>
+                                                        handleDocFileChange(
+                                                            "stok",
+                                                            index,
+                                                            e.target.files?.[0],
+                                                        )
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor={`stok-date-${index}`}
+                                                    className="text-xs text-muted-foreground flex items-center gap-1"
+                                                >
+                                                    <CalendarIcon className="h-3 w-3" />
+                                                    Tanggal (opsional)
+                                                </Label>
+                                                <Input
+                                                    id={`stok-date-${index}`}
+                                                    type="date"
+                                                    value={doc.date || ""}
+                                                    onChange={(e) =>
+                                                        handleDocDateChange(
+                                                            "stok",
+                                                            index,
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10 flex-shrink-0"
+                                            onClick={() =>
+                                                handleRemoveDocRow(
+                                                    "stok",
+                                                    index,
+                                                )
+                                            }
+                                            title="Hapus baris"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Existing Photos (untuk edit mode) - foto stok */}
                         {localExistingStok && localExistingStok.length > 0 && (
                             <div className="space-y-2 mt-2">
@@ -1318,41 +1469,6 @@ export const SparepartForm = ({
                                                         "stok",
                                                     );
                                                 }}
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        {/* New Photos */}
-                        {stokPhotos.length > 0 && (
-                            <div className="space-y-2 mt-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">
-                                        Foto baru:
-                                    </span>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {stokPhotos.map((photo, index) => (
-                                        <div key={index} className="relative">
-                                            <img
-                                                src={URL.createObjectURL(photo)}
-                                                alt={`Preview ${index + 1}`}
-                                                className="w-20 h-20 object-cover rounded border"
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="icon"
-                                                className="absolute -top-2 -right-2 h-5 w-5"
-                                                onClick={() =>
-                                                    handleRemovePhoto(
-                                                        "stok",
-                                                        index,
-                                                    )
-                                                }
                                             >
                                                 <X className="h-3 w-3" />
                                             </Button>
@@ -1700,19 +1816,126 @@ export const SparepartForm = ({
                     </div>
 
                     {/* Dokumentasi Bekas */}
-                    <div className="space-y-2">
-                        <Label>Dokumentasi Bekas (Foto)</Label>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={(e) =>
-                                    handlePhotoChange("bekas", e.target.files)
-                                }
-                                className="flex-1"
-                            />
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-base font-semibold">
+                                Dokumentasi Bekas (Foto)
+                            </Label>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddDocRow("bekas")}
+                            >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Tambah Foto
+                            </Button>
                         </div>
+
+                        {/* Empty state */}
+                        {bekasDocs.length === 0 && (
+                            <div className="flex flex-col items-center justify-center text-center border border-dashed rounded-lg py-8 text-muted-foreground">
+                                <Camera className="h-8 w-8 mb-2 opacity-60" />
+                                <p className="text-sm">
+                                    Belum ada foto dokumentasi
+                                </p>
+                                <p className="text-xs opacity-70">
+                                    Klik <span className="font-medium">
+                                        Tambah Foto
+                                    </span>{" "}
+                                    untuk mengunggah satu per satu
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Documentation rows */}
+                        {bekasDocs.length > 0 && (
+                            <div className="space-y-2">
+                                {bekasDocs.map((doc, index) => (
+                                    <div
+                                        key={doc.id || index}
+                                        className="flex items-center gap-3 border rounded-lg p-2 bg-muted/20"
+                                    >
+                                        <div className="h-16 w-16 rounded-md overflow-hidden border bg-background flex-shrink-0 flex items-center justify-center">
+                                            {doc.file ? (
+                                                <img
+                                                    src={URL.createObjectURL(
+                                                        doc.file,
+                                                    )}
+                                                    alt={`Foto ${index + 1}`}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <Camera className="h-6 w-6 text-muted-foreground/60" />
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_180px] gap-2">
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor={`bekas-file-${index}`}
+                                                    className="text-xs text-muted-foreground"
+                                                >
+                                                    Foto {index + 1}
+                                                </Label>
+                                                <Input
+                                                    id={`bekas-file-${index}`}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) =>
+                                                        handleDocFileChange(
+                                                            "bekas",
+                                                            index,
+                                                            e.target.files?.[0],
+                                                        )
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor={`bekas-date-${index}`}
+                                                    className="text-xs text-muted-foreground flex items-center gap-1"
+                                                >
+                                                    <CalendarIcon className="h-3 w-3" />
+                                                    Tanggal (opsional)
+                                                </Label>
+                                                <Input
+                                                    id={`bekas-date-${index}`}
+                                                    type="date"
+                                                    value={doc.date || ""}
+                                                    onChange={(e) =>
+                                                        handleDocDateChange(
+                                                            "bekas",
+                                                            index,
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="h-8"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10 flex-shrink-0"
+                                            onClick={() =>
+                                                handleRemoveDocRow(
+                                                    "bekas",
+                                                    index,
+                                                )
+                                            }
+                                            title="Hapus baris"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Existing Photos (untuk edit mode) - foto bekas */}
                         {localExistingBekas &&
                             localExistingBekas.length > 0 && (
@@ -1799,41 +2022,6 @@ export const SparepartForm = ({
                                     </div>
                                 </div>
                             )}
-                        {/* New Photos */}
-                        {bekasPhotos.length > 0 && (
-                            <div className="space-y-2 mt-2">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">
-                                        Foto baru:
-                                    </span>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {bekasPhotos.map((photo, index) => (
-                                        <div key={index} className="relative">
-                                            <img
-                                                src={URL.createObjectURL(photo)}
-                                                alt={`Preview ${index + 1}`}
-                                                className="w-20 h-20 object-cover rounded border"
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="icon"
-                                                className="absolute -top-2 -right-2 h-5 w-5"
-                                                onClick={() =>
-                                                    handleRemovePhoto(
-                                                        "bekas",
-                                                        index,
-                                                    )
-                                                }
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
