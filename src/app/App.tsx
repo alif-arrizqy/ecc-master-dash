@@ -25,6 +25,7 @@ const RawSLAPage = lazy(() => import("../features/sla/pages/RawSLAPage").then(m 
 
 // Monitoring Pages
 const MonitoringDashboard = lazy(() => import("../features/monitoring/pages/MonitoringDashboard").then(m => ({ default: m.MonitoringDashboard })));
+const UptimeLoggersDashboard = lazy(() => import("../features/monitoring/pages/UptimeLoggersDashboard").then(m => ({ default: m.default })));
 
 // Shipping Pages
 const ShippingPage = lazy(() => import("../features/shipping/pages/ShippingPage").then(m => ({ default: m.default })));
@@ -63,10 +64,18 @@ const App = () => (
             
             {/* Monitoring Routes */}
             <Route 
-              path="/monitoring" 
+              path="/monitoring/nms-semeru" 
               element={
                 <Suspense fallback={<Loading text="Memuat halaman monitoring..." />}>
                   <MonitoringDashboard />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/monitoring/uptime-loggers" 
+              element={
+                <Suspense fallback={<Loading text="Memuat halaman uptime & loggers..." />}>
+                  <UptimeLoggersDashboard />
                 </Suspense>
               } 
             />
