@@ -11,6 +11,7 @@ const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL;
 const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
 const SHIPPING_SERVICES_URL = import.meta.env.VITE_SHIPPING_SERVICES_URL;
 const SPAREPART_SERVICES_URL = import.meta.env.VITE_SPAREPART_SERVICES_URL;
+const UPTIME_LOGGERS_URL = import.meta.env.VITE_UPTIME_LOGGERS_URL;
 const TROUBLE_TICKET_SERVICES_URL = import.meta.env.VITE_TROUBLE_TICKET_SERVICES_URL;
 const SLA_INTERNAL_API_URL = import.meta.env.VITE_SLA_INTERNAL_SERVICES_URL;
 
@@ -101,6 +102,17 @@ export const shippingApiClient: AxiosInstance = axios.create({
 export const sparepartApiClient: AxiosInstance = axios.create({
   baseURL: SPAREPART_SERVICES_URL,
   timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Create axios instance for Uptime Loggers Services
+ */
+export const uptimeLoggersApiClient: AxiosInstance = axios.create({
+  baseURL: UPTIME_LOGGERS_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -1019,8 +1031,7 @@ export const slaApi = {
       queryParams.statusSLA = params.statusSLA;
     }
     if (params.pic && params.pic !== 'all') {
-      const picMap: Record<string, string> = { Power: 'POWER', Other: 'OTHER', VSAT: 'VSAT', SNMP: 'SNMP' };
-      queryParams.pic = picMap[params.pic] ?? params.pic;
+      queryParams.pic = params.pic;
     }
     if (params.siteName) {
       queryParams.siteName = params.siteName;

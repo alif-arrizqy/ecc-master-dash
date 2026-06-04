@@ -19,4 +19,5 @@ export * from './types/monitoring.types';
 
 // Services
 export { monitoringApi } from './services/monitoring.api';
+export { uptimeLoggersApi } from './services/uptime-loggers.api';
 
