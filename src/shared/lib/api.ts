@@ -12,6 +12,7 @@ export {
   monitoringApiClient,
   shippingApiClient,
   sparepartApiClient,
+  uptimeLoggersApiClient,
   troubleTicketApiClient,
   slaInternalApiClient,
 } from '@/lib/api';

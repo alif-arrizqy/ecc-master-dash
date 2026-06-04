@@ -30,8 +30,11 @@ const Navbar = () => {
     {
       label: 'Monitoring',
       icon: Activity,
-      hasChildren: false,
-      to: '/monitoring'
+      hasChildren: true,
+      children: [
+        { to: '/monitoring/nms-semeru', label: 'NMS Semeru' },
+        { to: '/monitoring/uptime-loggers', label: 'Uptime & Loggers' }
+      ]
     },
     {
       label: 'Sites',
