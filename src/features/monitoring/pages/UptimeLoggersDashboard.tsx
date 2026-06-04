@@ -22,10 +22,10 @@ export default function UptimeLoggersDashboard() {
       {/* Main Tabs Container */}
       <Tabs defaultValue="uptime" className="w-full">
         <div className="flex items-center justify-between mb-6">
-          <TabsList className="bg-muted/50 p-1 rounded-xl">
+          <TabsList className="h-auto bg-muted border border-border p-1.5 rounded-xl shadow-sm">
             <TabsTrigger 
               value="uptime"
-              className="rounded-lg px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all duration-300"
+              className="rounded-lg px-6 py-2.5 text-foreground/70 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-border transition-all duration-200"
             >
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4" />
@@ -34,7 +34,7 @@ export default function UptimeLoggersDashboard() {
             </TabsTrigger>
             <TabsTrigger 
               value="pulling"
-              className="rounded-lg px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all duration-300"
+              className="rounded-lg px-6 py-2.5 text-foreground/70 data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-border transition-all duration-200"
             >
               <div className="flex items-center gap-2">
                 <Server className="w-4 h-4" />

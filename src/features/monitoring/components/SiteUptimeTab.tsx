@@ -1,9 +1,15 @@
-import { useState, useMemo } from "react";
-import { Search, Clock, Zap, Activity, Wifi } from "lucide-react";
-import { dummySites } from "../utils/uptimeDummyData";
-import { format, isToday, differenceInHours } from "date-fns";
-import { toast } from "sonner";
+import { useMemo, useState } from "react";
+import { Search, Clock, Zap, Activity, Wifi, Loader2 } from "lucide-react";
+import { format, isToday } from "date-fns";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { SiteItem } from "../services/uptime-loggers.api";
 import {
   Select,
   SelectContent,
@@ -12,8 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useUptimeSummary, useUptimeSites } from "../hooks/useUptimeLoggersQueries";
 
-// Circular Progress Component for Uptime
 const CircularProgress = ({ value, colorClass }: { value: number; colorClass: string }) => {
   const radius = 22;
   const circumference = 2 * Math.PI * radius;
@@ -51,116 +57,86 @@ const CircularProgress = ({ value, colorClass }: { value: number; colorClass: st
   );
 };
 
+function formatSiteLabel(siteId: string, siteName: string): string {
+  const cleanName = siteName.replace(/[_-]/g, " ").trim().toUpperCase();
+  const id = siteId.toUpperCase();
+  if (!cleanName || cleanName === id) return id;
+  return `${id} - ${cleanName}`;
+}
+
+function getStatusStyles(status: string) {
+  switch (status) {
+    case "online":
+    case "healthy":
+      return {
+        statusText: status === "online" ? "Online" : "Healthy",
+        colorClass: "text-green-500",
+        bgClass: "bg-green-500",
+        glowClass: "shadow-[0_0_8px_rgba(34,197,94,0.6)]",
+      };
+    case "warning":
+      return {
+        statusText: "Warning",
+        colorClass: "text-yellow-500",
+        bgClass: "bg-yellow-500",
+        glowClass: "shadow-[0_0_8px_rgba(234,179,8,0.6)]",
+      };
+    case "offline":
+    case "critical":
+      return {
+        statusText: status === "offline" ? "Offline" : "Critical",
+        colorClass: "text-red-500",
+        bgClass: "bg-red-500",
+        glowClass: "shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse",
+      };
+    default:
+      return {
+        statusText: "Unknown",
+        colorClass: "text-muted-foreground",
+        bgClass: "bg-muted",
+        glowClass: "",
+      };
+  }
+}
+
+type StatusListDialog = "online" | "offline" | null;
+
 export const SiteUptimeTab = () => {
   const [search, setSearch] = useState("");
   const [batteryType, setBatteryType] = useState<string>("all");
   const [uptimeHealth, setUptimeHealth] = useState<string>("all");
-  const [date, setDate] = useState<Date | undefined>(new Date()); // Default to Today
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [statusDialog, setStatusDialog] = useState<StatusListDialog>(null);
 
-  // Generate deterministic random data for past dates to simulate historical data
-  const currentData = useMemo(() => {
-    if (!date || isToday(date)) return dummySites;
-    
-    return dummySites.map(site => {
-      // Use date's timestamp to create a deterministic pseudo-random variation
-      const seed = date.getDate() + date.getMonth(); 
-      
-      // Randomize uptime
-      const variation = (seed % 30) - 15; // -15 to +15
-      let pct = site.uptimePercentage + variation;
-      if (pct > 100) pct = 100;
-      if (pct < 30) pct = 30 + (seed % 20); // Keep it realistic
-      
-      // Randomize voltage slightly
-      const vVar = (seed % 4) - 2;
-      const v = +(site.batteryVoltage + (vVar * 0.1)).toFixed(1);
-
-      return {
-        ...site,
-        uptimePercentage: pct,
-        batteryVoltage: v,
-        pingLatency: site.pingLatency + (seed * 5),
-        // Scramble the duration text to match the new percentage
-        uptimeDuration: pct === 100 ? "24h 00m" : `${Math.floor((pct/100)*24)}h ${seed % 60}m`
-      };
-    });
-  }, [date]);
-
-  const filteredSites = currentData.filter((site) => {
-    const matchesSearch = site.name.toLowerCase().includes(search.toLowerCase());
-    const matchesBattery = batteryType === "all" || site.batteryType === batteryType;
-    
-    let matchesUptime = true;
-    if (uptimeHealth === "100") {
-      matchesUptime = site.uptimePercentage === 100;
-    } else if (uptimeHealth === "95") {
-      matchesUptime = site.uptimePercentage <= 95 && site.uptimePercentage > 70;
-    } else if (uptimeHealth === "70") {
-      matchesUptime = site.uptimePercentage <= 70;
-    }
-
-    return matchesSearch && matchesBattery && matchesUptime;
-  });
-
-  // Dynamic Logic: 
-  // If Today -> use Online/Offline (last update < 2 hours)
-  // If Past Date -> use Uptime Percentage
-  const getSiteStatus = (site: typeof dummySites[0]) => {
-    const isRealtime = !date || isToday(date);
-    
-    if (isRealtime) {
-      const hoursSinceUpdate = differenceInHours(new Date(), new Date(site.lastUpdatedAt));
-      const isOnline = hoursSinceUpdate < 2;
-      return {
-        isOnline,
-        statusText: isOnline ? 'Online' : 'Offline',
-        colorClass: isOnline ? 'text-green-500' : 'text-red-500',
-        bgClass: isOnline ? 'bg-green-500' : 'bg-red-500',
-        glowClass: isOnline ? 'shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse',
-      };
-    } else {
-      // Historical mode (based on uptime)
-      const pct = site.uptimePercentage;
-      const isHealthy = pct === 100;
-      const isWarning = pct > 70 && pct < 100;
-      return {
-        isOnline: null,
-        statusText: isHealthy ? 'Healthy' : isWarning ? 'Warning' : 'Critical',
-        colorClass: isHealthy ? 'text-green-500' : isWarning ? 'text-yellow-500' : 'text-red-500',
-        bgClass: isHealthy ? 'bg-green-500' : isWarning ? 'bg-yellow-500' : 'bg-red-500',
-        glowClass: isHealthy ? 'shadow-[0_0_8px_rgba(34,197,94,0.6)]' : isWarning ? 'shadow-[0_0_8px_rgba(234,179,8,0.6)]' : 'shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse',
-      };
-    }
-  };
-
-  const handleCardClick = (siteName: string) => {
-    toast.success(`Membuka Grafana untuk ${siteName}`, {
-      description: "Anda akan diarahkan ke dashboard analitik historis untuk site ini.",
-    });
-  };
-
-  // Summary Calculations (Global, unaffected by filters)
+  const dateStr = date ? format(date, "yyyy-MM-dd") : undefined;
+  const batteryFilter = batteryType !== "all" ? batteryType : undefined;
   const isRealtime = !date || isToday(date);
-  const totalSites = currentData.length;
-  const avgUptime = currentData.reduce((acc, curr) => acc + curr.uptimePercentage, 0) / (totalSites || 1);
-  
-  let onlineCount = 0;
-  let offlineCount = 0;
-  let healthyCount = 0;
-  let warningCount = 0;
-  let criticalCount = 0;
-  
-  currentData.forEach(site => {
-    if (isRealtime) {
-      const hoursSinceUpdate = differenceInHours(new Date(), new Date(site.lastUpdatedAt));
-      if (hoursSinceUpdate < 2) onlineCount++;
-      else offlineCount++;
-    } else {
-      if (site.uptimePercentage === 100) healthyCount++;
-      else if (site.uptimePercentage > 70) warningCount++;
-      else criticalCount++;
-    }
+
+  const { data: summary, isLoading: summaryLoading } = useUptimeSummary(dateStr);
+  const { data: sites, isLoading: sitesLoading, isError } = useUptimeSites({
+    date: dateStr,
+    batteryType: batteryFilter,
+    search: search || undefined,
+    uptimeHealth: uptimeHealth !== "all" ? uptimeHealth : undefined,
   });
+
+  const { data: allSites, isLoading: allSitesLoading } = useUptimeSites(
+    { date: dateStr, batteryType: batteryFilter },
+    { enabled: Boolean(dateStr) },
+  );
+
+  const statusListSites = useMemo(() => {
+    if (!statusDialog || !allSites) return [];
+    return allSites
+      .filter((s) => s.connectivityStatus === statusDialog)
+      .sort((a, b) => a.siteName.localeCompare(b.siteName));
+  }, [allSites, statusDialog]);
+
+  const handleCardClick = (grafanaUrl: string | null, siteName: string) => {
+    if (grafanaUrl) {
+      window.open(grafanaUrl, "_blank");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -168,46 +144,61 @@ export const SiteUptimeTab = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
           <span className="text-sm font-medium text-muted-foreground">Total Site</span>
-          <span className="text-2xl font-bold">{totalSites} <span className="text-sm font-normal text-muted-foreground">Site</span></span>
+          <span className="text-2xl font-bold">
+            {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.totalSites ?? 0}
+            <span className="text-sm font-normal text-muted-foreground"> Site</span>
+          </span>
         </div>
         
         <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
           <span className="text-sm font-medium text-muted-foreground">Rata-rata Uptime</span>
-          <span className="text-2xl font-bold">{avgUptime.toFixed(1)}<span className="text-sm font-normal text-muted-foreground">%</span></span>
+          <span className="text-2xl font-bold">
+            {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `${summary?.avgUptime?.toFixed(1) ?? 0}`}
+            <span className="text-sm font-normal text-muted-foreground">%</span>
+          </span>
+          {isRealtime && (
+            <span className="text-[10px] text-muted-foreground">sejak 00:00 s/d sekarang</span>
+          )}
         </div>
         
-        {isRealtime ? (
-          <>
-            <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1" title="Site yang mengirim data dalam 2 jam terakhir">
-              <span className="text-sm font-medium text-muted-foreground">Site Online</span>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-green-500">{onlineCount}</span>
-                <span className="text-xs text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full font-medium">Update &lt; 2 Jam</span>
-              </div>
-            </div>
-            <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1" title="Site yang terputus atau belum mengirim data lebih dari 2 jam">
-              <span className="text-sm font-medium text-muted-foreground">Site Offline</span>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-red-500">{offlineCount}</span>
-                <span className="text-xs text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full font-medium">Update &gt; 2 Jam</span>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
-              <span className="text-sm font-medium text-muted-foreground">Site Sehat</span>
-              <span className="text-2xl font-bold text-green-500">{healthyCount} <span className="text-sm font-medium text-muted-foreground">Site</span></span>
-            </div>
-            <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
-              <span className="text-sm font-medium text-muted-foreground">Waspada & Kritis</span>
-              <div className="flex items-baseline gap-3">
-                <span className="text-2xl font-bold text-yellow-500">{warningCount} <span className="text-xs font-normal text-muted-foreground uppercase">Waspada</span></span>
-                <span className="text-2xl font-bold text-red-500">{criticalCount} <span className="text-xs font-normal text-muted-foreground uppercase">Kritis</span></span>
-              </div>
-            </div>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={() => setStatusDialog("online")}
+          className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1 text-left cursor-pointer transition-colors hover:border-green-500/40 hover:bg-green-500/5 border border-transparent"
+          title="Klik untuk lihat daftar site online"
+        >
+          <span className="text-sm font-medium text-muted-foreground">Site Online</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-2xl font-bold text-green-500">
+              {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.onlineCount ?? 0}
+              <span className="text-sm font-normal text-muted-foreground"> Site</span>
+            </span>
+            {isRealtime && (
+              <span className="text-xs text-green-700 dark:text-green-400 bg-green-500/25 border border-green-500/40 px-2 py-0.5 rounded-full font-medium">
+                Update &lt; 2 Jam
+              </span>
+            )}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusDialog("offline")}
+          className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1 text-left cursor-pointer transition-colors hover:border-red-500/40 hover:bg-red-500/5 border border-transparent"
+          title="Klik untuk lihat daftar site offline"
+        >
+          <span className="text-sm font-medium text-muted-foreground">Site Offline</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-2xl font-bold text-red-500">
+              {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.offlineCount ?? 0}
+              <span className="text-sm font-normal text-muted-foreground"> Site</span>
+            </span>
+            {isRealtime && (
+              <span className="text-xs text-red-700 dark:text-red-400 bg-red-500/25 border border-red-500/40 px-2 py-0.5 rounded-full font-medium">
+                Update &gt; 2 Jam
+              </span>
+            )}
+          </div>
+        </button>
       </div>
 
       {/* Filters */}
@@ -258,101 +249,211 @@ export const SiteUptimeTab = () => {
         </div>
       </div>
 
+      {/* Loading State */}
+      {sitesLoading && (
+        <div className="py-24 flex flex-col items-center justify-center bg-card/40 backdrop-blur-sm rounded-2xl border border-border/50">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground font-medium">Memuat data site...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {isError && !sitesLoading && (
+        <div className="py-24 flex flex-col items-center justify-center bg-card/40 backdrop-blur-sm rounded-2xl border border-red-500/20">
+          <Activity className="w-12 h-12 text-red-500/50 mb-4" />
+          <p className="text-red-500 font-medium">Gagal memuat data. Pastikan backend berjalan di port 8882.</p>
+        </div>
+      )}
+
       {/* Grid View */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {filteredSites.map((site) => {
-          const status = getSiteStatus(site);
-          
-          return (
-          <div 
-            key={site.id}
-            onClick={() => handleCardClick(site.name)}
-            className="group relative flex flex-col bg-card/40 backdrop-blur-md rounded-2xl border border-border/60 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:border-primary/40"
-          >
-            {/* Subtle glow effect behind card on hover */}
+      {!sitesLoading && !isError && sites && (
+        <>
+        <p className="text-xs text-muted-foreground">
+          Site dengan uptime terendah ditampilkan terlebih dahulu.
+          {isRealtime && " Persentase hari ini dihitung dari 00:00 sampai sekarang."}
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {sites.map((site) => {
+            const status = getStatusStyles(site.status);
+            
+            return (
             <div 
-              className={`absolute -inset-2 opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-2xl -z-10 rounded-3xl ${status.bgClass}`} 
-            />
+              key={site.siteId}
+              onClick={() => handleCardClick(site.grafanaUrl, site.siteName)}
+              className="group relative flex flex-col bg-card/40 backdrop-blur-md rounded-2xl border border-border/60 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:border-primary/40"
+            >
+              <div 
+                className={`absolute -inset-2 opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-2xl -z-10 rounded-3xl ${status.bgClass}`} 
+              />
 
-            <div className="p-5 flex flex-col gap-4">
-              {/* Header Section */}
-              <div className="flex justify-between items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    {/* Status Dot */}
-                    <div className={`w-2 h-2 shrink-0 rounded-full ${status.bgClass} ${status.glowClass}`} title={status.statusText} />
-                    <h3 className="font-bold text-foreground truncate text-base tracking-tight" title={site.name}>
-                      {site.name}
-                    </h3>
+              <div className="p-5 flex flex-col gap-4">
+                {/* Header */}
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`w-2 h-2 shrink-0 rounded-full ${status.bgClass} ${status.glowClass}`} title={status.statusText} />
+                      <h3 className="font-bold text-foreground truncate text-base tracking-tight" title={formatSiteLabel(site.siteId, site.siteName)}>
+                        {formatSiteLabel(site.siteId, site.siteName)}
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="uppercase text-[9px] font-bold tracking-wider bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full">
+                        {site.batteryType}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {site.lastUpdate ? format(new Date(site.lastUpdate), "dd MMM HH:mm") : "N/A"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="uppercase text-[9px] font-bold tracking-wider bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full">
-                      {site.batteryType}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {format(new Date(site.lastUpdatedAt), "dd MMM HH:mm")}
-                    </span>
+
+                  <div className="shrink-0" title={isRealtime ? "Uptime sejauh ini hari ini" : "Uptime harian (24 jam)"}>
+                    <CircularProgress 
+                      value={site.uptimePercentage} 
+                      colorClass={
+                        site.uptimePercentage === 100 ? "text-green-500" 
+                        : site.uptimePercentage > 70 ? "text-yellow-500" 
+                        : "text-red-500"
+                      } 
+                    />
                   </div>
                 </div>
 
-                {/* Circular Uptime */}
-                <div className="shrink-0" title={`Uptime (Color based on Uptime %, not realtime status)`}>
-                  <CircularProgress 
-                    value={site.uptimePercentage} 
-                    colorClass={
-                      site.uptimePercentage === 100 ? "text-green-500" 
-                      : site.uptimePercentage > 70 ? "text-yellow-500" 
-                      : "text-red-500"
-                    } 
-                  />
+                {/* Uptime Duration */}
+                <div className="bg-background/40 rounded-xl p-3 flex items-center justify-between border border-border/40 mt-1">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-muted-foreground">Uptime Duration</span>
+                  </div>
+                  <span className="text-sm font-bold text-foreground bg-secondary/50 px-2.5 py-1 rounded-md">
+                    {site.uptimeDuration ?? "—"}
+                  </span>
                 </div>
-              </div>
+                {isRealtime && (
+                  <p className="text-[10px] text-muted-foreground text-center -mt-2">
+                    * Persentase &amp; durasi dihitung dari 00:00 sampai sekarang
+                  </p>
+                )}
 
-              {/* Uptime Text Banner */}
-              <div className="bg-background/40 rounded-xl p-3 flex items-center justify-between border border-border/40 mt-1">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground">Uptime Duration</span>
-                </div>
-                <span className="text-sm font-bold text-foreground bg-secondary/50 px-2.5 py-1 rounded-md">
-                  {site.uptimeDuration}
-                </span>
-              </div>
-
-              {/* Bottom Metrics */}
-              <div className="grid grid-cols-2 gap-3 mt-1">
-                <div className="flex items-center gap-3 bg-card/30 p-2.5 rounded-xl border border-border/30 group-hover:bg-card/50 transition-colors">
-                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg shrink-0">
-                    <Zap className="w-4 h-4" />
+                {/* Bottom Metrics */}
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <div className="flex items-center gap-3 bg-card/30 p-2.5 rounded-xl border border-border/30 group-hover:bg-card/50 transition-colors">
+                    <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg shrink-0">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">Voltage</span>
+                      <span className="font-bold text-sm truncate">{site.batteryVoltageV != null ? `${site.batteryVoltageV} V` : "—"}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">Voltage</span>
-                    <span className="font-bold text-sm truncate">{site.batteryVoltage} V</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3 bg-card/30 p-2.5 rounded-xl border border-border/30 group-hover:bg-card/50 transition-colors">
-                  <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg shrink-0">
-                    <Wifi className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">Latency</span>
-                    <span className="font-bold text-sm truncate">{site.pingLatency} ms</span>
+                  
+                  <div className="flex items-center gap-3 bg-card/30 p-2.5 rounded-xl border border-border/30 group-hover:bg-card/50 transition-colors">
+                    <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg shrink-0">
+                      <Wifi className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">Latency</span>
+                      <span className="font-bold text-sm truncate">{site.pingLatencyMs != null ? `${site.pingLatencyMs} ms` : "—"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )})}
-      </div>
+          )})}
+        </div>
+        </>
+      )}
 
-      {filteredSites.length === 0 && (
+      {!sitesLoading && !isError && sites && sites.length === 0 && (
         <div className="py-24 flex flex-col items-center justify-center bg-card/40 backdrop-blur-sm rounded-2xl border border-border/50">
           <Activity className="w-12 h-12 text-muted-foreground/30 mb-4" />
           <p className="text-muted-foreground font-medium">Tidak ada site yang cocok dengan filter.</p>
         </div>
       )}
+
+      <Dialog open={statusDialog !== null} onOpenChange={(open) => !open && setStatusDialog(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {statusDialog === "online" ? "Site Online" : "Site Offline"}
+            </DialogTitle>
+            {isRealtime && (
+              <DialogDescription>
+                {statusDialog === "online"
+                  ? "Site dengan pembaruan data dalam 2 jam terakhir."
+                  : "Site tanpa pembaruan data lebih dari 2 jam."}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0 -mx-1 px-1">
+            {allSitesLoading ? (
+              <div className="py-12 flex justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : statusListSites.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Tidak ada site dalam kategori ini.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {statusListSites.map((site) => (
+                  <StatusListRow
+                    key={site.siteId}
+                    site={site}
+                    variant={statusDialog === "online" ? "online" : "offline"}
+                    onOpenGrafana={(url) => url && window.open(url, "_blank")}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {!allSitesLoading && statusListSites.length > 0 && (
+            <p className="text-xs text-muted-foreground pt-2 border-t border-border/50">
+              {statusListSites.length} site
+              {batteryFilter ? ` · filter battery: ${batteryFilter}` : ""}
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
+
+function StatusListRow({
+  site,
+  variant,
+  onOpenGrafana,
+}: {
+  site: SiteItem;
+  variant: "online" | "offline";
+  onOpenGrafana: (url: string | null) => void;
+}) {
+  const dotClass = variant === "online" ? "bg-green-500" : "bg-red-500";
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpenGrafana(site.grafanaUrl)}
+        disabled={!site.grafanaUrl}
+        className="w-full flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/50 px-3 py-2.5 text-left transition-colors hover:bg-accent/50 disabled:cursor-default disabled:opacity-100"
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className={`w-2 h-2 shrink-0 rounded-full ${dotClass}`} />
+          <span className="font-medium text-sm truncate">
+            {formatSiteLabel(site.siteId, site.siteName)}
+          </span>
+        </div>
+        <div className="flex flex-col items-end shrink-0 text-xs text-muted-foreground">
+          <span>{site.uptimePercentage}%</span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {site.lastUpdate ? format(new Date(site.lastUpdate), "dd MMM HH:mm") : "N/A"}
+          </span>
+        </div>
+      </button>
+    </li>
+  );
+}

@@ -11,6 +11,7 @@ const SITES_SERVICES_URL = import.meta.env.VITE_SITES_SERVICES_URL;
 const MONITORING_SERVICES_URL = import.meta.env.VITE_MONITORING_SERVICES_URL;
 const SHIPPING_SERVICES_URL = import.meta.env.VITE_SHIPPING_SERVICES_URL;
 const SPAREPART_SERVICES_URL = import.meta.env.VITE_SPAREPART_SERVICES_URL;
+const UPTIME_LOGGERS_URL = import.meta.env.VITE_UPTIME_LOGGERS_URL;
 
 if (!import.meta.env.VITE_SLA_SERVICES_URL) {
   console.warn('VITE_SLA_SERVICES_URL is not set.');
@@ -91,6 +92,17 @@ export const shippingApiClient: AxiosInstance = axios.create({
 export const sparepartApiClient: AxiosInstance = axios.create({
   baseURL: SPAREPART_SERVICES_URL,
   timeout: 30000, // 30 seconds
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * Create axios instance for Uptime Loggers Services
+ */
+export const uptimeLoggersApiClient: AxiosInstance = axios.create({
+  baseURL: UPTIME_LOGGERS_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
