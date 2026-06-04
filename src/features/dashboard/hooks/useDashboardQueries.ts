@@ -149,3 +149,34 @@ export function useSLAReportDetail(
   });
 }
 
+/**
+ * Hook: Get daily SLA MQTT chart data for terestrial sites
+ */
+export function useDailySLAChartTerrestrial(
+  params: { startDate: string; endDate: string },
+  options?: Omit<UseQueryOptions<DailySLA[], Error>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery<DailySLA[], Error>({
+    queryKey: ['dashboard', 'dailySLAChartTerrestrial', params.startDate, params.endDate],
+    queryFn: async () => {
+      const data = await dashboardApi.getDailySLAChartTerrestrial(params);
+      return transformChartData(data);
+    },
+    ...options,
+  });
+}
+
+/**
+ * Hook: Get monthly summary for terestrial/MQTT sites
+ */
+export function useMonthlySummaryTerrestrial(
+  period: string,
+  options?: Omit<UseQueryOptions<{ totalSites: number; avgSla: number; slaUnit: string; slaStatus: string }, Error>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery<{ totalSites: number; avgSla: number; slaUnit: string; slaStatus: string }, Error>({
+    queryKey: ['dashboard', 'monthlySummaryTerrestrial', period],
+    queryFn: () => dashboardApi.getMonthlySummaryTerrestrial(period),
+    ...options,
+  });
+}
+
