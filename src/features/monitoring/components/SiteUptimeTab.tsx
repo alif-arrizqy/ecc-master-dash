@@ -269,7 +269,6 @@ export const SiteUptimeTab = () => {
       {!sitesLoading && !isError && sites && (
         <>
         <p className="text-xs text-muted-foreground">
-          Site dengan uptime terendah ditampilkan terlebih dahulu.
           {isRealtime && " Persentase hari ini dihitung dari 00:00 sampai sekarang."}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -343,7 +342,7 @@ export const SiteUptimeTab = () => {
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">Voltage</span>
-                      <span className="font-bold text-sm truncate">{site.batteryVoltageV != null ? `${site.batteryVoltageV} V` : "—"}</span>
+                      <span className="font-bold text-sm truncate">{site.batteryVoltageV != null ? `${site.batteryVoltageV.toFixed(2)} V` : "—"}</span>
                     </div>
                   </div>
                   
