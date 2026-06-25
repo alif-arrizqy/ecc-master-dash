@@ -1,0 +1,549 @@
+/**
+ * Ticketing Page
+ * Halaman utama untuk Trouble Ticketing System
+ */
+
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { 
+    Plus, 
+    RefreshCw, 
+    Ticket as TicketIcon, 
+    FileDown, 
+    Clock, 
+    CheckCircle2, 
+    BarChart3, 
+    PieChart 
+} from "lucide-react";
+import { useTickets } from "../hooks/useTickets";
+import { useTicketTypes } from "../hooks/useTicketTypes";
+import { useProblems } from "../hooks/useProblems";
+import { usePics } from "../hooks/usePics";
+import { TicketFilters } from "../components/TicketFilters";
+import { TicketTable } from "../components/TicketTable";
+import { DetailTicketModal } from "../components/modals/DetailTicketModal";
+import { EditTicketModal } from "../components/modals/EditTicketModal";
+import { AddProgressModal } from "../components/modals/AddProgressModal";
+import { CloseTicketModal } from "../components/modals/CloseTicketModal";
+import { CreateTicketModal } from "../components/modals/CreateTicketModal";
+import { UpdateStatusModal } from "../components/modals/UpdateStatusModal";
+import { TicketSummary } from "../components/TicketSummary";
+import { 
+    Tabs, 
+    TabsContent, 
+    TabsList, 
+    TabsTrigger 
+} from "@/components/ui/tabs";
+import { troubleTicketApi } from "../services/ticketing.api";
+import type {
+    Ticket,
+    TicketFilterParams,
+    CreateTicketFormData,
+    EditTicketFormData,
+    AddProgressFormData,
+    CloseTicketFormData,
+    ManualStatusUpdateFormData,
+} from "../types/ticketing.types";
+
+const TicketingPage = () => {
+    const queryClient = useQueryClient();
+
+    // State for pagination and filters
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(20);
+    const [filters, setFilters] = useState<Partial<TicketFilterParams>>({});
+    const [isExporting, setIsExporting] = useState(false);
+
+    // State for modals
+    const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [addProgressModalOpen, setAddProgressModalOpen] = useState(false);
+    const [closeTicketModalOpen, setCloseTicketModalOpen] = useState(false);
+    const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
+
+    // State for selected ticket
+    const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+
+    // State for selected tab
+    const [currentTab, setCurrentTab] = useState("open");
+
+    // Fetch data
+    const {
+        data: ticketsData,
+        isLoading: isLoadingTickets,
+        isRefetching,
+        refetch,
+    } = useTickets({
+        page,
+        perPage,
+        ...filters,
+        status: currentTab === "open" ? "progress,pending" : (currentTab === "closed" ? "closed" : undefined)
+    });
+    const { data: ticketTypesData = [] } = useTicketTypes();
+    const { data: problemsData = [] } = useProblems();
+    const { data: picsData = [] } = usePics();
+
+    // Mutations
+    const createMutation = useMutation({
+        mutationFn: (data: CreateTicketFormData) =>
+            troubleTicketApi.create(data),
+        onSuccess: () => {
+            toast.success("Ticket berhasil dibuat");
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+            setCreateModalOpen(false);
+            setPage(1);
+        },
+        onError: (error) => {
+            toast.error("Gagal membuat ticket", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        },
+    });
+
+    const editMutation = useMutation({
+        mutationFn: ({
+            ticketNumber,
+            data,
+        }: {
+            ticketNumber: string;
+            data: EditTicketFormData;
+        }) => troubleTicketApi.update(ticketNumber, data),
+        onSuccess: () => {
+            toast.success("Ticket berhasil diupdate");
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+            queryClient.invalidateQueries({ queryKey: ["ticket-detail"] });
+            setEditModalOpen(false);
+            setSelectedTicket(null);
+        },
+        onError: (error) => {
+            toast.error("Gagal mengupdate ticket", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        },
+    });
+
+    const closeTicketMutation = useMutation({
+        mutationFn: ({
+            ticketNumber,
+            data,
+        }: {
+            ticketNumber: string;
+            data: CloseTicketFormData;
+        }) => troubleTicketApi.closeTicket(ticketNumber, data),
+        onSuccess: () => {
+            toast.success("Ticket berhasil ditutup");
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+            queryClient.invalidateQueries({ queryKey: ["ticket-detail"] });
+            setCloseTicketModalOpen(false);
+            setSelectedTicket(null);
+        },
+        onError: (error) => {
+            toast.error("Gagal menutup ticket", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        },
+    });
+
+    const addProgressMutation = useMutation({
+        mutationFn: ({
+            ticketNumber,
+            data,
+        }: {
+            ticketNumber: string;
+            data: AddProgressFormData;
+        }) => troubleTicketApi.addProgress(ticketNumber, data),
+        onSuccess: () => {
+            toast.success("Progress berhasil ditambahkan");
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+            queryClient.invalidateQueries({ queryKey: ["ticket-detail"] });
+            queryClient.invalidateQueries({ queryKey: ["progress-history"] });
+            setAddProgressModalOpen(false);
+            setSelectedTicket(null);
+        },
+        onError: (error) => {
+            toast.error("Gagal menambah progress", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        },
+    });
+
+    const updateStatusMutation = useMutation({
+        mutationFn: ({
+            ticketNumber,
+            data,
+        }: {
+            ticketNumber: string;
+            data: ManualStatusUpdateFormData;
+        }) => troubleTicketApi.updateStatus(ticketNumber, data),
+        onSuccess: () => {
+            toast.success("Status ticket berhasil diperbarui");
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+            queryClient.invalidateQueries({ queryKey: ["ticket-detail"] });
+            queryClient.invalidateQueries({ queryKey: ["progress-history"] });
+            setUpdateStatusModalOpen(false);
+            setSelectedTicket(null);
+        },
+        onError: (error) => {
+            toast.error("Gagal mengubah status ticket", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (ticketNumber: string) =>
+            troubleTicketApi.delete(ticketNumber),
+        onSuccess: () => {
+            toast.success("Ticket berhasil dihapus");
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+        },
+        onError: (error) => {
+            toast.error("Gagal menghapus ticket", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        },
+    });
+
+    // Handlers
+    const handleViewDetail = (ticket: Ticket) => {
+        setSelectedTicket(ticket);
+        setDetailModalOpen(true);
+    };
+
+    const handleEdit = (ticket: Ticket) => {
+        setSelectedTicket(ticket);
+        setDetailModalOpen(false);
+        setEditModalOpen(true);
+    };
+
+    const handleAddProgress = (ticket: Ticket) => {
+        setSelectedTicket(ticket);
+        setDetailModalOpen(false);
+        setAddProgressModalOpen(true);
+    };
+
+    const handleCloseTicket = (ticket: Ticket) => {
+        setSelectedTicket(ticket);
+        setDetailModalOpen(false);
+        setCloseTicketModalOpen(true);
+    };
+
+    const handleOpenUpdateStatus = (ticket: Ticket) => {
+        setSelectedTicket(ticket);
+        setDetailModalOpen(false);
+        setUpdateStatusModalOpen(true);
+    };
+
+    const handleDelete = (ticket: Ticket) => {
+        if (window.confirm("Apakah Anda yakin ingin menghapus ticket ini?")) {
+            deleteMutation.mutate(ticket.ticket_number);
+        }
+    };
+
+    const handleCreateSubmit = (data: CreateTicketFormData) => {
+        createMutation.mutate(data);
+    };
+
+    const handleEditSubmit = (data: EditTicketFormData) => {
+        if (selectedTicket) {
+            editMutation.mutate({
+                ticketNumber: selectedTicket.ticket_number,
+                data,
+            });
+        }
+    };
+
+    const handleAddProgressSubmit = (data: AddProgressFormData) => {
+        if (selectedTicket) {
+            addProgressMutation.mutate({
+                ticketNumber: selectedTicket.ticket_number,
+                data,
+            });
+        }
+    };
+
+    const handleCloseSubmit = (data: CloseTicketFormData) => {
+        if (selectedTicket) {
+            closeTicketMutation.mutate({
+                ticketNumber: selectedTicket.ticket_number,
+                data,
+            });
+        }
+    };
+
+    const handleUpdateStatusSubmit = (data: ManualStatusUpdateFormData) => {
+        if (selectedTicket) {
+            updateStatusMutation.mutate({
+                ticketNumber: selectedTicket.ticket_number,
+                data,
+            });
+        }
+    };
+
+    const renderTicketList = () => (
+        <>
+            {/* Filters Section */}
+            <section className="mb-6 animate-slide-up">
+                <TicketFilters
+                    ticketTypes={ticketTypesData}
+                    pics={picsData}
+                    onFilterChange={(newFilters) => {
+                        setFilters((prev) => ({ ...prev, ...newFilters }));
+                        setPage(1);
+                    }}
+                    onApply={() => {
+                        // Filters are already applied on change
+                    }}
+                />
+            </section>
+
+            {/* Table Section */}
+            <section className="mb-6 animate-slide-up">
+                <div className="bg-card rounded-lg p-6 card-shadow">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-foreground">
+                            Tickets List
+                        </h3>
+                    </div>
+                    <TicketTable
+                        data={ticketsData?.data || []}
+                        isLoading={isLoadingTickets}
+                        pagination={ticketsData?.pagination}
+                        onView={handleViewDetail}
+                        onEdit={handleEdit}
+                        onAddProgress={handleAddProgress}
+                        onClose={handleCloseTicket}
+                        onDelete={handleDelete}
+                        onPageChange={setPage}
+                        onPerPageChange={setPerPage}
+                    />
+                </div>
+            </section>
+        </>
+    );
+
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        try {
+            const blob = await troubleTicketApi.exportExcel({
+                status: filters.status ? String(filters.status) : undefined,
+                ticketType: filters.ticketType ? Number(filters.ticketType) : undefined,
+                siteId: filters.siteId || undefined,
+                siteName: filters.siteName || undefined,
+                province: filters.province || undefined,
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "trouble-ticket-report.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast.success("File Excel berhasil diunduh");
+        } catch {
+            toast.error("Gagal mengekspor ke Excel");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    return (
+        <div className="container mx-auto px-4 py-8">
+            {/* Page Header */}
+            <div className="mb-8 animate-fade-in">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10">
+                            <TicketIcon className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                                Trouble Ticketing System
+                            </h1>
+                            <p className="text-muted-foreground mt-1">
+                                Kelola trouble tickets site Sundaya
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        {/* Export Excel */}
+                        <Button
+                            size="sm"
+                            onClick={handleExportExcel}
+                            disabled={isExporting}
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-60"
+                        >
+                            <FileDown
+                                className={`h-4 w-4 ${isExporting ? "animate-pulse" : ""}`}
+                            />
+                            {isExporting ? "Exporting..." : "Export Excel"}
+                        </Button>
+
+                        {/* Refresh */}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refetch()}
+                            disabled={isRefetching}
+                            className="gap-2 border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white hover:border-blue-600 dark:border-blue-800 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600 transition-all duration-200 disabled:opacity-60"
+                        >
+                            <RefreshCw
+                                className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`}
+                            />
+                            Refresh
+                        </Button>
+
+                        {/* Add Ticket */}
+                        <Button
+                            onClick={() => setCreateModalOpen(true)}
+                            size="sm"
+                            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add Ticket
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <Tabs 
+                defaultValue="open" 
+                value={currentTab}
+                onValueChange={(val) => {
+                    setCurrentTab(val);
+                    setPage(1);
+                }}
+                className="w-full"
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <TabsList className="bg-muted/50 p-1 rounded-xl">
+                        <TabsTrigger 
+                            value="open"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                <span>In Progress & Pending</span>
+                            </div>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="closed"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                <span>Closed</span>
+                            </div>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="all"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4" />
+                                <span>All Tickets</span>
+                            </div>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="summary"
+                            className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm px-6"
+                        >
+                            <div className="flex items-center gap-2">
+                                <PieChart className="h-4 w-4 text-primary" />
+                                <span>Summary</span>
+                            </div>
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="summary" className="mt-0">
+                    <TicketSummary />
+                </TabsContent>
+
+                <TabsContent value="open" className="mt-0">
+                    {renderTicketList()}
+                </TabsContent>
+
+                <TabsContent value="closed" className="mt-0">
+                    {renderTicketList()}
+                </TabsContent>
+
+                <TabsContent value="all" className="mt-0">
+                    {renderTicketList()}
+                </TabsContent>
+            </Tabs>
+
+            {/* Create Ticket Modal */}
+            <CreateTicketModal
+                open={createModalOpen}
+                onOpenChange={setCreateModalOpen}
+                ticketTypes={ticketTypesData}
+                problems={problemsData}
+                pics={picsData}
+                isSubmitting={createMutation.isPending}
+                onSubmit={handleCreateSubmit}
+            />
+
+            {/* Detail Ticket Modal */}
+            <DetailTicketModal
+                open={detailModalOpen}
+                onOpenChange={setDetailModalOpen}
+                ticket={selectedTicket || undefined}
+                onEdit={() => handleEdit(selectedTicket!)}
+                onAddProgress={() => handleAddProgress(selectedTicket!)}
+                onClose={() => handleCloseTicket(selectedTicket!)}
+                onUpdateStatus={() => handleOpenUpdateStatus(selectedTicket!)}
+            />
+
+            {/* Edit Ticket Modal */}
+            <EditTicketModal
+                open={editModalOpen}
+                onOpenChange={setEditModalOpen}
+                ticket={selectedTicket || undefined}
+                ticketTypes={ticketTypesData}
+                problems={problemsData}
+                pics={picsData}
+                isSubmitting={editMutation.isPending}
+                onSubmit={handleEditSubmit}
+            />
+
+            {/* Add Progress Modal */}
+            <AddProgressModal
+                open={addProgressModalOpen}
+                onOpenChange={setAddProgressModalOpen}
+                ticket={selectedTicket || undefined}
+                isSubmitting={addProgressMutation.isPending}
+                onSubmit={handleAddProgressSubmit}
+            />
+
+            {/* Close Ticket Modal */}
+            <CloseTicketModal
+                open={closeTicketModalOpen}
+                onOpenChange={setCloseTicketModalOpen}
+                ticket={selectedTicket || undefined}
+                isSubmitting={closeTicketMutation.isPending}
+                onSubmit={handleCloseSubmit}
+            />
+
+            <UpdateStatusModal
+                open={updateStatusModalOpen}
+                onOpenChange={setUpdateStatusModalOpen}
+                ticket={selectedTicket || undefined}
+                isSubmitting={updateStatusMutation.isPending}
+                onSubmit={handleUpdateStatusSubmit}
+            />
+        </div>
+    );
+};
+
+export default TicketingPage;

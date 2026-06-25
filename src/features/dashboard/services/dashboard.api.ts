@@ -210,5 +210,39 @@ export const dashboardApi = {
       },
     });
   },
+
+  /**
+   * Get daily SLA MQTT chart data for terestrial sites
+   * GET /api/v1/sla-bakti/daily/chart/terrestrial
+   */
+  getDailySLAChartTerrestrial: async (params: {
+    startDate: string;
+    endDate: string;
+  }) => {
+    return fetchSlaApi<Array<{ date: string; value: number }>>(
+      `/api/v1/sla-bakti/daily/chart/terrestrial`,
+      {
+        params: {
+          startDate: params.startDate,
+          endDate: params.endDate,
+        },
+      }
+    );
+  },
+
+  /**
+   * Get monthly summary for terestrial/MQTT sites
+   * GET /api/v1/sla-bakti/monthly/summary/terrestrial
+   */
+  getMonthlySummaryTerrestrial: async (period: string) => {
+    return fetchSlaApi<{
+      totalSites: number;
+      avgSla: number;
+      slaUnit: string;
+      slaStatus: string;
+    }>(`/api/v1/sla-bakti/monthly/summary/terrestrial`, {
+      params: { period },
+    });
+  },
 };
 

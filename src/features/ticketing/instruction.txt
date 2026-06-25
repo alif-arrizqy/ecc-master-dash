@@ -1,0 +1,25 @@
+hi claude, selamat malam.
+
+tolong bantu saya untuk memperbaiki halaman trouble ticket. 
+tolong kerjakan dengan benar, sesuai instruksi dan pastikan tidak ada error bugs minor maupun major.
+
+backend:
+@ehub-developments\bakti-projects\jspro-bakti-master\services\trouble-ticket-services
+1. tambahkan crud untuk history progress.
+saat ini history progress hanya bisa menambahkan data saja.
+tambahkan juga untuk bisa edit dan hapus history progres
+
+frontend:
+@ehub-developments\bakti-projects\ecc-master-dash\src\features\ticketing
+1. form modal view detail
+   - pada section history progress, tambahkan fungsi Edit dan Hapus
+   jadi di setiap progressnya apabila ada kesalahan bisa di ubah atau di hapus
+   - ubah ui button close, edit, add progress, close ticket
+   ubah button supaya terlihat lebih seragam lagi style buttonnya dengan pemilihan warna dan hover yang sesuai.
+   anda improve lagi design nya
+
+2. button export excel, refresh data, add ticket
+   ubah button supaya terlihat lebih seragam lagi style buttonnya dengan pemilihan warna dan hover yang sesuai.
+   anda improve lagi design nya
+
+anda adalah senior ui ux dan frontend engineerm jadi kerjakan tugas ini dengan sesuai best practice, cepat dan no error

@@ -7,6 +7,18 @@ import { slaApiClient } from '@/shared/lib/api';
 import type { BatteryVersion } from '@/shared/lib/api';
 import type { AxiosRequestConfig } from 'axios';
 
+/** Maps SLA Master UI PIC filter (mockData labels) to GET /sla-bakti/master query values. */
+const SLA_MASTER_PIC_TO_API: Record<string, string> = {
+  Power: 'POWER',
+  Other: 'OTHER',
+  VSAT: 'VSAT',
+  SNMP: 'SNMP',
+};
+
+function slaMasterPicToQueryParam(pic: string): string {
+  return SLA_MASTER_PIC_TO_API[pic] ?? pic;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -47,6 +59,10 @@ export const slaApi = {
   /**
    * Get SLA reasons for battery version (Penyebab AVG SLA < 95.5%)
    * GET /api/v1/sla-reason/battery-version/{batteryVersion}
+   *
+   * Returns:
+   * - id: SlaReason.id (for display)
+   * - batteryVersionId: BatteryVersionReason.id — use this for DELETE /battery-version/:id
    */
   getSLAReasonsByBatteryVersion: async (
     batteryVersion: BatteryVersion,
@@ -54,6 +70,7 @@ export const slaApi = {
   ) => {
     return fetchSlaApi<Array<{
       id: number;
+      batteryVersionId: number;
       reason: string;
       createdAt: string;
       updatedAt: string;
@@ -103,7 +120,7 @@ export const slaApi = {
       queryParams.statusSLA = params.statusSLA;
     }
     if (params.pic && params.pic !== 'all') {
-      queryParams.pic = params.pic;
+      queryParams.pic = slaMasterPicToQueryParam(params.pic);
     }
     if (params.siteName) {
       queryParams.siteName = params.siteName;

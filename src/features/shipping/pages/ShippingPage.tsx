@@ -133,9 +133,27 @@ const ShippingPage = () => {
       setShippingFormOpen(false);
       resetShippingForm();
     },
-    onError: (error) => {
-      toast.error('Gagal menambahkan data shipping', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+    onError: (error: unknown) => {
+      let errorMessage = 'Gagal menambahkan data shipping';
+      let errorDescription = 'Terjadi kesalahan saat menambahkan data';
+
+      // Handle Axios error
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        const responseData = axiosError.response?.data;
+
+        if (responseData?.message) {
+          errorDescription = responseData.message;
+        } else if (responseData?.error) {
+          errorDescription = responseData.error;
+        }
+      } else if (error instanceof Error) {
+        errorDescription = error.message;
+      }
+
+      toast.error(errorMessage, {
+        description: errorDescription,
+        duration: 5000,
       });
     },
   });
@@ -151,9 +169,27 @@ const ShippingPage = () => {
       setShippingFormOpen(false);
       resetShippingForm();
     },
-    onError: (error) => {
-      toast.error('Gagal mengupdate data shipping', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+    onError: (error: unknown) => {
+      let errorMessage = 'Gagal mengupdate data shipping';
+      let errorDescription = 'Terjadi kesalahan saat mengupdate data';
+
+      // Handle Axios error
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        const responseData = axiosError.response?.data;
+
+        if (responseData?.message) {
+          errorDescription = responseData.message;
+        } else if (responseData?.error) {
+          errorDescription = responseData.error;
+        }
+      } else if (error instanceof Error) {
+        errorDescription = error.message;
+      }
+
+      toast.error(errorMessage, {
+        description: errorDescription,
+        duration: 5000,
       });
     },
   });

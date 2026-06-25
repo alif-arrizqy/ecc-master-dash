@@ -8,9 +8,15 @@ import { Loading } from "@/components/ui/loading";
 import NotFound from "../pages/NotFound";
 import UnderDevelopment from "../pages/UnderDevelopment";
 import Layout from "@/shared/components/layout/Layout";
+import TicketingPage from "@/features/ticketing/pages/TicketingPage";
 
-// Dashboard Page
+// Dashboard Pages
 const Dashboard = lazy(() => import("../features/dashboard/pages/Dashboard").then(m => ({ default: m.default })));
+const DashboardByPeriod = lazy(() =>
+  import("../features/dashboard/pages/DashboardByPeriod").then((m) => ({
+    default: m.default,
+  })),
+);
 
 // Sites Pages
 const SitesPage = lazy(() => import("../features/sites/SitesPage").then(m => ({ default: m.default })));
@@ -22,6 +28,17 @@ const ProblemPage = lazy(() => import("../features/sla/pages/ProblemPage").then(
 const ReasonPage = lazy(() => import("../features/sla/pages/ReasonPage").then(m => ({ default: m.default })));
 const HistoryGAMASPage = lazy(() => import("../features/sla/pages/HistoryGAMASPage").then(m => ({ default: m.default })));
 const RawSLAPage = lazy(() => import("../features/sla/pages/RawSLAPage").then(m => ({ default: m.default })));
+
+// SLA Internal (logger legacy)
+const SlaInternal1Page = lazy(() =>
+  import("../features/sla-internal/pages/SlaInternal1Page").then((m) => ({ default: m.default })),
+);
+const SlaInternal2Page = lazy(() =>
+  import("../features/sla-internal/pages/SlaInternal2Page").then((m) => ({ default: m.default })),
+);
+const SlaInternal3Page = lazy(() =>
+  import("../features/sla-internal/pages/SlaInternal3Page").then((m) => ({ default: m.default })),
+);
 
 // Monitoring Pages
 const MonitoringDashboard = lazy(() => import("../features/monitoring/pages/MonitoringDashboard").then(m => ({ default: m.MonitoringDashboard })));
@@ -51,7 +68,15 @@ const App = () => (
                 </Suspense>
               } 
             />
-            
+            <Route
+              path="/dashboard/periode"
+              element={
+                <Suspense fallback={<Loading text="Memuat dashboard..." />}>
+                  <DashboardByPeriod />
+                </Suspense>
+              }
+            />
+
             {/* Sites Routes */}
             <Route 
               path="/sites" 
@@ -131,12 +156,33 @@ const App = () => (
             />
             
             {/* SLA Internal Routes */}
-            <Route path="/sla-internal/1" element={<UnderDevelopment title="SLA 1" description="Halaman SLA Internal 1" />} />
-            <Route path="/sla-internal/2" element={<UnderDevelopment title="SLA 2" description="Halaman SLA Internal 2" />} />
-            <Route path="/sla-internal/3" element={<UnderDevelopment title="SLA 3" description="Halaman SLA Internal 3" />} />
+            <Route
+              path="/sla-internal/1"
+              element={
+                <Suspense fallback={<Loading text="Memuat SLA Internal 1..." />}>
+                  <SlaInternal1Page />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/sla-internal/2"
+              element={
+                <Suspense fallback={<Loading text="Memuat SLA Internal 2..." />}>
+                  <SlaInternal2Page />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/sla-internal/3"
+              element={
+                <Suspense fallback={<Loading text="Memuat SLA Internal 3..." />}>
+                  <SlaInternal3Page />
+                </Suspense>
+              }
+            />
 
             {/* Tools Routes */}
-            <Route path="/tools/tickets" element={<NotFound />} />
+            <Route path="/tools/tickets" element={<TicketingPage />} />
             <Route 
               path="/tools/shipping" 
               element={
