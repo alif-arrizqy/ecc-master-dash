@@ -15,7 +15,9 @@ import {
     Clock, 
     CheckCircle2, 
     BarChart3, 
-    PieChart 
+    PieChart,
+    Camera,
+    Loader2,
 } from "lucide-react";
 import { useTickets } from "../hooks/useTickets";
 import { useTicketTypes } from "../hooks/useTicketTypes";
@@ -37,6 +39,7 @@ import {
     TabsTrigger 
 } from "@/components/ui/tabs";
 import { troubleTicketApi } from "../services/ticketing.api";
+import { captureTicketTable } from "../utils/captureTicketTable";
 import type {
     Ticket,
     TicketFilterParams,
@@ -55,6 +58,8 @@ const TicketingPage = () => {
     const [perPage, setPerPage] = useState(20);
     const [filters, setFilters] = useState<Partial<TicketFilterParams>>({});
     const [isExporting, setIsExporting] = useState(false);
+    const [isCapturing, setIsCapturing] = useState(false);
+    const [captureProgress, setCaptureProgress] = useState("");
 
     // State for modals
     const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -289,6 +294,29 @@ const TicketingPage = () => {
         }
     };
 
+    const getTabStatus = () => {
+        if (currentTab === "open") return "progress,pending";
+        if (currentTab === "closed") return "closed";
+        return undefined;
+    };
+
+    const handleCaptureTable = async () => {
+        setIsCapturing(true);
+        setCaptureProgress("Menyiapkan capture...");
+        try {
+            await captureTicketTable(filters, getTabStatus(), setCaptureProgress);
+            toast.success("Tabel berhasil di-capture");
+        } catch (error) {
+            toast.error("Gagal capture tabel", {
+                description:
+                    error instanceof Error ? error.message : "Unknown error",
+            });
+        } finally {
+            setIsCapturing(false);
+            setCaptureProgress("");
+        }
+    };
+
     const renderTicketList = () => (
         <>
             {/* Filters Section */}
@@ -313,6 +341,27 @@ const TicketingPage = () => {
                         <h3 className="text-lg font-semibold text-foreground">
                             Tickets List
                         </h3>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={handleCaptureTable}
+                            disabled={isCapturing || isLoadingTickets}
+                            className="flex items-center gap-2 bg-primary text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Capture table as PNG"
+                            aria-label="Capture table as PNG"
+                        >
+                            {isCapturing ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    {captureProgress || "Capturing..."}
+                                </>
+                            ) : (
+                                <>
+                                    <Camera className="h-4 w-4" />
+                                    Capture Table
+                                </>
+                            )}
+                        </Button>
                     </div>
                     <TicketTable
                         data={ticketsData?.data || []}
