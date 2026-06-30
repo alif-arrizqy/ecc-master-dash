@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Clock, Zap, Activity, Wifi, Loader2 } from "lucide-react";
+import { Search, Clock, Activity, Loader2 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,85 +18,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { useUptimeSummary, useUptimeSites } from "../hooks/useUptimeLoggersQueries";
-
-const CircularProgress = ({ value, colorClass }: { value: number; colorClass: string }) => {
-  const radius = 22;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (value / 100) * circumference;
-  
-  return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg className="w-[52px] h-[52px] transform -rotate-90">
-        <circle
-          className="text-muted/20"
-          strokeWidth="4"
-          stroke="currentColor"
-          fill="transparent"
-          r={radius}
-          cx="26"
-          cy="26"
-        />
-        <circle
-          className={`${colorClass} transition-all duration-1000 ease-in-out`}
-          strokeWidth="4"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          stroke="currentColor"
-          fill="transparent"
-          r={radius}
-          cx="26"
-          cy="26"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[11px] font-bold">{value}%</span>
-      </div>
-    </div>
-  );
-};
+import {
+  useUptimeSummary,
+  useUptimeSites,
+  useSiteCoordinates,
+} from "../hooks/useUptimeLoggersQueries";
+import { SiteUptimeMap, type MapSite } from "./SiteUptimeMap";
 
 function formatSiteLabel(siteId: string, siteName: string): string {
   const cleanName = siteName.replace(/[_-]/g, " ").trim().toUpperCase();
   const id = siteId.toUpperCase();
   if (!cleanName || cleanName === id) return id;
   return `${id} - ${cleanName}`;
-}
-
-function getStatusStyles(status: string) {
-  switch (status) {
-    case "online":
-    case "healthy":
-      return {
-        statusText: status === "online" ? "Online" : "Healthy",
-        colorClass: "text-green-500",
-        bgClass: "bg-green-500",
-        glowClass: "shadow-[0_0_8px_rgba(34,197,94,0.6)]",
-      };
-    case "warning":
-      return {
-        statusText: "Warning",
-        colorClass: "text-yellow-500",
-        bgClass: "bg-yellow-500",
-        glowClass: "shadow-[0_0_8px_rgba(234,179,8,0.6)]",
-      };
-    case "offline":
-    case "critical":
-      return {
-        statusText: status === "offline" ? "Offline" : "Critical",
-        colorClass: "text-red-500",
-        bgClass: "bg-red-500",
-        glowClass: "shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse",
-      };
-    default:
-      return {
-        statusText: "Unknown",
-        colorClass: "text-muted-foreground",
-        bgClass: "bg-muted",
-        glowClass: "",
-      };
-  }
 }
 
 type StatusListDialog = "online" | "offline" | null;
@@ -119,11 +52,21 @@ export const SiteUptimeTab = () => {
     search: search || undefined,
     uptimeHealth: uptimeHealth !== "all" ? uptimeHealth : undefined,
   });
+  const { data: coords } = useSiteCoordinates();
 
   const { data: allSites, isLoading: allSitesLoading } = useUptimeSites(
     { date: dateStr, batteryType: batteryFilter },
     { enabled: Boolean(dateStr) },
   );
+
+  // Merge uptime sites (after filters) with coordinates from sites-service.
+  const mapSites = useMemo<MapSite[]>(() => {
+    if (!sites || !coords) return [];
+    return sites.flatMap((site) => {
+      const c = coords.get(site.siteId.toUpperCase());
+      return c ? [{ ...site, lat: c.lat, lng: c.lng }] : [];
+    });
+  }, [sites, coords]);
 
   const statusListSites = useMemo(() => {
     if (!statusDialog || !allSites) return [];
@@ -132,85 +75,26 @@ export const SiteUptimeTab = () => {
       .sort((a, b) => a.siteName.localeCompare(b.siteName));
   }, [allSites, statusDialog]);
 
-  const handleCardClick = (grafanaUrl: string | null, siteName: string) => {
-    if (grafanaUrl) {
-      window.open(grafanaUrl, "_blank");
-    }
-  };
+  const isFiltered = Boolean(search) || Boolean(batteryFilter) || uptimeHealth !== "all";
+
+  // Counts from the currently filtered site list, for the "X dari Y" badges.
+  const filtered = useMemo(() => {
+    if (!sites) return null;
+    const online = sites.filter((s) => s.connectivityStatus === "online").length;
+    const avg = sites.length
+      ? sites.reduce((acc, s) => acc + s.uptimePercentage, 0) / sites.length
+      : 0;
+    return { total: sites.length, online, offline: sites.length - online, avg };
+  }, [sites]);
 
   return (
     <div className="space-y-6">
-      {/* Global Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
-          <span className="text-sm font-medium text-muted-foreground">Total Site</span>
-          <span className="text-2xl font-bold">
-            {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.totalSites ?? 0}
-            <span className="text-sm font-normal text-muted-foreground"> Site</span>
-          </span>
-        </div>
-        
-        <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
-          <span className="text-sm font-medium text-muted-foreground">Rata-rata Uptime</span>
-          <span className="text-2xl font-bold">
-            {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `${summary?.avgUptime?.toFixed(1) ?? 0}`}
-            <span className="text-sm font-normal text-muted-foreground">%</span>
-          </span>
-          {isRealtime && (
-            <span className="text-[10px] text-muted-foreground">sejak 00:00 s/d sekarang</span>
-          )}
-        </div>
-        
-        <button
-          type="button"
-          onClick={() => setStatusDialog("online")}
-          className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1 text-left cursor-pointer transition-colors hover:border-green-500/40 hover:bg-green-500/5 border border-transparent"
-          title="Klik untuk lihat daftar site online"
-        >
-          <span className="text-sm font-medium text-muted-foreground">Site Online</span>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-2xl font-bold text-green-500">
-              {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.onlineCount ?? 0}
-              <span className="text-sm font-normal text-muted-foreground"> Site</span>
-            </span>
-            {isRealtime && (
-              <span className="text-xs text-green-700 dark:text-green-400 bg-green-500/25 border border-green-500/40 px-2 py-0.5 rounded-full font-medium">
-                Update &lt; 2 Jam
-              </span>
-            )}
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatusDialog("offline")}
-          className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1 text-left cursor-pointer transition-colors hover:border-red-500/40 hover:bg-red-500/5 border border-transparent"
-          title="Klik untuk lihat daftar site offline"
-        >
-          <span className="text-sm font-medium text-muted-foreground">Site Offline</span>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-2xl font-bold text-red-500">
-              {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.offlineCount ?? 0}
-              <span className="text-sm font-normal text-muted-foreground"> Site</span>
-            </span>
-            {isRealtime && (
-              <span className="text-xs text-red-700 dark:text-red-400 bg-red-500/25 border border-red-500/40 px-2 py-0.5 rounded-full font-medium">
-                Update &gt; 2 Jam
-              </span>
-            )}
-          </div>
-        </button>
-      </div>
-
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center bg-card p-4 rounded-lg card-shadow">
         <div className="w-full md:w-auto">
-          <DatePicker 
-            date={date} 
-            setDate={setDate} 
-            disabled={(d) => d > new Date()} 
-          />
+          <DatePicker date={date} setDate={setDate} disabled={(d) => d > new Date()} />
         </div>
-        
+
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -220,7 +104,7 @@ export const SiteUptimeTab = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        
+
         <div className="w-full sm:w-48">
           <Select value={batteryType} onValueChange={setBatteryType}>
             <SelectTrigger className="bg-background/50 border-border/50">
@@ -265,117 +149,96 @@ export const SiteUptimeTab = () => {
         </div>
       )}
 
-      {/* Grid View */}
-      {!sitesLoading && !isError && sites && (
-        <>
-        <p className="text-xs text-muted-foreground">
-          {isRealtime && " Persentase hari ini dihitung dari 00:00 sampai sekarang."}
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {sites.map((site) => {
-            const status = getStatusStyles(site.status);
-            
-            return (
-            <div 
-              key={site.siteId}
-              onClick={() => handleCardClick(site.grafanaUrl, site.siteName)}
-              className="group relative flex flex-col bg-card/40 backdrop-blur-md rounded-2xl border border-border/60 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:border-primary/40"
-            >
-              <div 
-                className={`absolute -inset-2 opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-2xl -z-10 rounded-3xl ${status.bgClass}`} 
-              />
+      {/* Map View */}
+      {!sitesLoading && !isError && <SiteUptimeMap sites={mapSites} />}
 
-              <div className="p-5 flex flex-col gap-4">
-                {/* Header */}
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-2 h-2 shrink-0 rounded-full ${status.bgClass} ${status.glowClass}`} title={status.statusText} />
-                      <h3 className="font-bold text-foreground truncate text-base tracking-tight" title={formatSiteLabel(site.siteId, site.siteName)}>
-                        {formatSiteLabel(site.siteId, site.siteName)}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="uppercase text-[9px] font-bold tracking-wider bg-secondary/80 text-secondary-foreground px-2 py-0.5 rounded-full">
-                        {site.batteryType}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {site.lastUpdate ? format(new Date(site.lastUpdate), "dd MMM HH:mm") : "N/A"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0" title={isRealtime ? "Uptime sejauh ini hari ini" : "Uptime harian (24 jam)"}>
-                    <CircularProgress 
-                      value={site.uptimePercentage} 
-                      colorClass={
-                        site.uptimePercentage === 100 ? "text-green-500" 
-                        : site.uptimePercentage > 70 ? "text-yellow-500" 
-                        : "text-red-500"
-                      } 
-                    />
-                  </div>
-                </div>
-
-                {/* Uptime Duration */}
-                <div className="bg-background/40 rounded-xl p-3 flex items-center justify-between border border-border/40 mt-1">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-muted-foreground">Uptime Duration</span>
-                  </div>
-                  <span className="text-sm font-bold text-foreground bg-secondary/50 px-2.5 py-1 rounded-md">
-                    {site.uptimeDuration ?? "—"}
-                  </span>
-                </div>
-                {isRealtime && (
-                  <p className="text-[10px] text-muted-foreground text-center -mt-2">
-                    * Persentase &amp; durasi dihitung dari 00:00 sampai sekarang
-                  </p>
-                )}
-
-                {/* Bottom Metrics */}
-                <div className="grid grid-cols-2 gap-3 mt-1">
-                  <div className="flex items-center gap-3 bg-card/30 p-2.5 rounded-xl border border-border/30 group-hover:bg-card/50 transition-colors">
-                    <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg shrink-0">
-                      <Zap className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">Voltage</span>
-                      <span className="font-bold text-sm truncate">{site.batteryVoltageV != null ? `${site.batteryVoltageV.toFixed(2)} V` : "—"}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 bg-card/30 p-2.5 rounded-xl border border-border/30 group-hover:bg-card/50 transition-colors">
-                    <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg shrink-0">
-                      <Wifi className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold truncate">Latency</span>
-                      <span className="font-bold text-sm truncate">{site.pingLatencyMs != null ? `${site.pingLatencyMs} ms` : "—"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )})}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
+          <span className="text-sm font-medium text-muted-foreground">Total Site</span>
+          <span className="text-2xl font-bold">
+            {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.totalSites ?? 0}
+            <span className="text-sm font-normal text-muted-foreground"> Site</span>
+          </span>
+          {isFiltered && filtered && (
+            <span className="text-[10px] text-muted-foreground bg-muted/60 w-fit px-2 py-0.5 rounded-full">
+              menampilkan {filtered.total} dari {summary?.totalSites ?? 0}
+            </span>
+          )}
         </div>
-        </>
-      )}
 
-      {!sitesLoading && !isError && sites && sites.length === 0 && (
-        <div className="py-24 flex flex-col items-center justify-center bg-card/40 backdrop-blur-sm rounded-2xl border border-border/50">
-          <Activity className="w-12 h-12 text-muted-foreground/30 mb-4" />
-          <p className="text-muted-foreground font-medium">Tidak ada site yang cocok dengan filter.</p>
+        <div className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1">
+          <span className="text-sm font-medium text-muted-foreground">Rata-rata Uptime</span>
+          <span className="text-2xl font-bold">
+            {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : `${summary?.avgUptime?.toFixed(1) ?? 0}`}
+            <span className="text-sm font-normal text-muted-foreground">%</span>
+          </span>
+          {isFiltered && filtered ? (
+            <span className="text-[10px] text-muted-foreground bg-muted/60 w-fit px-2 py-0.5 rounded-full">
+              filter: {filtered.avg.toFixed(1)}% ({filtered.total} site)
+            </span>
+          ) : (
+            isRealtime && (
+              <span className="text-[10px] text-muted-foreground">sejak 00:00 s/d sekarang</span>
+            )
+          )}
         </div>
-      )}
+
+        <button
+          type="button"
+          onClick={() => setStatusDialog("online")}
+          className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1 text-left cursor-pointer transition-colors hover:border-green-500/40 hover:bg-green-500/5 border border-transparent"
+          title="Klik untuk lihat daftar site online"
+        >
+          <span className="text-sm font-medium text-muted-foreground">Site Online</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-2xl font-bold text-green-500">
+              {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.onlineCount ?? 0}
+              <span className="text-sm font-normal text-muted-foreground"> Site</span>
+            </span>
+            {isRealtime && (
+              <span className="text-xs text-green-700 dark:text-green-400 bg-green-500/25 border border-green-500/40 px-2 py-0.5 rounded-full font-medium">
+                Update &lt; 2 Jam
+              </span>
+            )}
+          </div>
+          {isFiltered && filtered && (
+            <span className="text-[10px] text-muted-foreground bg-muted/60 w-fit px-2 py-0.5 rounded-full">
+              menampilkan {filtered.online} dari {summary?.onlineCount ?? 0}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusDialog("offline")}
+          className="bg-card rounded-lg card-shadow p-4 flex flex-col gap-1 text-left cursor-pointer transition-colors hover:border-red-500/40 hover:bg-red-500/5 border border-transparent"
+          title="Klik untuk lihat daftar site offline"
+        >
+          <span className="text-sm font-medium text-muted-foreground">Site Offline</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-2xl font-bold text-red-500">
+              {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : summary?.offlineCount ?? 0}
+              <span className="text-sm font-normal text-muted-foreground"> Site</span>
+            </span>
+            {isRealtime && (
+              <span className="text-xs text-red-700 dark:text-red-400 bg-red-500/25 border border-red-500/40 px-2 py-0.5 rounded-full font-medium">
+                Update &gt; 2 Jam
+              </span>
+            )}
+          </div>
+          {isFiltered && filtered && (
+            <span className="text-[10px] text-muted-foreground bg-muted/60 w-fit px-2 py-0.5 rounded-full">
+              menampilkan {filtered.offline} dari {summary?.offlineCount ?? 0}
+            </span>
+          )}
+        </button>
+      </div>
 
       <Dialog open={statusDialog !== null} onOpenChange={(open) => !open && setStatusDialog(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>
-              {statusDialog === "online" ? "Site Online" : "Site Offline"}
-            </DialogTitle>
+            <DialogTitle>{statusDialog === "online" ? "Site Online" : "Site Offline"}</DialogTitle>
             {isRealtime && (
               <DialogDescription>
                 {statusDialog === "online"
